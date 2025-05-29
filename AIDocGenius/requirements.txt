@@ -15,3 +15,6 @@ pytest>=6.2.5
 black>=21.9b0
 isort>=5.9.3
 flake8>=3.9.2
+scikit-learn>=1.0.2
+numpy>=1.21.0
+scipy>=1.7.0
