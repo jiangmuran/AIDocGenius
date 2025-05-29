@@ -74,9 +74,46 @@ python app.py
 docker-compose up -d
 ```
 
+## 🌟 Star 历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=jiangmuran/AIDocGenius&type=Date)](https://star-history.com/#jiangmuran/AIDocGenius&Date)
+
+## 👥 贡献者
+
+感谢所有为这个项目做出贡献的开发者！
+
+<a href="https://github.com/jiangmuran/AIDocGenius/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=jiangmuran/AIDocGenius" />
+</a>
+
+### 主要贡献者
+
+- [@jiangmuran](https://github.com/jiangmuran) - 项目创建者和维护者
+- 期待您的贡献！
+
+## 🏆 贡献排行榜
+
+| 贡献者 | 提交次数 | 贡献类型 |
+|--------|----------|----------|
+| [@jiangmuran](https://github.com/jiangmuran) | - | 核心功能开发 |
+
 ## 🤝 贡献指南
 
-欢迎提交 Issue 和 Pull Request！
+我们欢迎所有形式的贡献，包括但不限于：
+
+- 🐛 报告问题和建议
+- 📝 改进文档
+- ✨ 添加新功能
+- 🔨 修复 bug
+- 💡 提供想法和建议
+
+如何贡献：
+
+1. Fork 这个仓库
+2. 创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开一个 Pull Request
 
 ## 📫 联系方式
 
