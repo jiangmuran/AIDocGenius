@@ -1,131 +1,144 @@
-from typing import Optional
-from googletrans import Translator as GoogleTranslator
-from .utils import logger
+"""
+翻译器模块
+"""
+from typing import Dict, List, Optional, Union
+from pathlib import Path
+
+import torch
+from transformers import MarianMTModel, MarianTokenizer
+from .exceptions import TranslationError
 
 class Translator:
-    """
-    文档翻译器
-    """
+    """多语言翻译器"""
     
-    def __init__(self):
-        """
-        初始化翻译器
-        """
-        self.translator = GoogleTranslator()
-        self.supported_languages = {
-            'zh': 'chinese',
-            'en': 'english',
-            'ja': 'japanese',
-            'ko': 'korean',
-            'fr': 'french',
-            'de': 'german',
-            'es': 'spanish',
-            'it': 'italian',
-            'ru': 'russian',
-            'ar': 'arabic'
+    def __init__(self, device: Optional[str] = None):
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self._models: Dict[str, MarianMTModel] = {}
+        self._tokenizers: Dict[str, MarianTokenizer] = {}
+        self._language_pairs = {
+            'en2zh': 'Helsinki-NLP/opus-mt-en-zh',
+            'zh2en': 'Helsinki-NLP/opus-mt-zh-en',
+            'en2ja': 'Helsinki-NLP/opus-mt-en-jap',
+            'ja2en': 'Helsinki-NLP/opus-mt-jap-en',
+            'en2ko': 'Helsinki-NLP/opus-mt-en-ko',
+            'ko2en': 'Helsinki-NLP/opus-mt-ko-en',
         }
-        logger.info("Initialized translator")
-        
-    def translate(self,
-                content: str,
-                target_language: str,
-                source_language: Optional[str] = None) -> str:
+    
+    def translate(
+        self,
+        text: Union[str, List[str]],
+        source_lang: str,
+        target_lang: str,
+        batch_size: int = 8
+    ) -> Union[str, List[str]]:
         """
         翻译文本
         
         Args:
-            content: 要翻译的文本
-            target_language: 目标语言代码
-            source_language: 源语言代码（可选）
+            text: 待翻译文本或文本列表
+            source_lang: 源语言代码
+            target_lang: 目标语言代码
+            batch_size: 批处理大小
             
         Returns:
-            str: 翻译后的文本
+            翻译后的文本或文本列表
         """
+        pair_key = f"{source_lang}2{target_lang}"
+        if pair_key not in self._language_pairs:
+            raise TranslationError(f"不支持的语言对: {pair_key}")
+            
         try:
-            # 验证语言代码
-            if target_language not in self.supported_languages:
-                raise ValueError(f"Unsupported target language: {target_language}")
-            if source_language and source_language not in self.supported_languages:
-                raise ValueError(f"Unsupported source language: {source_language}")
-                
-            # 分段翻译以处理长文本
-            segments = self._split_into_segments(content)
-            translated_segments = []
+            model, tokenizer = self._get_model_and_tokenizer(pair_key)
             
-            for segment in segments:
-                translation = self.translator.translate(
-                    segment,
-                    dest=target_language,
-                    src=source_language if source_language else 'auto'
-                )
-                translated_segments.append(translation.text)
-                
-            # 合并翻译结果
-            result = '\n'.join(translated_segments)
-            logger.info(f"Translated text from {source_language or 'auto'} to {target_language}")
-            return result
-            
-        except Exception as e:
-            logger.error(f"Translation error: {str(e)}")
-            raise
-            
-    def _split_into_segments(self, content: str, max_length: int = 5000) -> list:
-        """
-        将长文本分割成小段
-        
-        Args:
-            content: 要分割的文本
-            max_length: 每段最大长度
-            
-        Returns:
-            list: 文本段落列表
-        """
-        if len(content) <= max_length:
-            return [content]
-            
-        segments = []
-        current_segment = []
-        current_length = 0
-        
-        # 按句子分割
-        sentences = content.replace('。', '。\n').replace('！', '！\n').replace('？', '？\n').split('\n')
-        
-        for sentence in sentences:
-            if current_length + len(sentence) > max_length:
-                segments.append(''.join(current_segment))
-                current_segment = [sentence]
-                current_length = len(sentence)
+            # 处理输入
+            if isinstance(text, str):
+                text = [text]
+                return_string = True
             else:
-                current_segment.append(sentence)
-                current_length += len(sentence)
+                return_string = False
                 
-        if current_segment:
-            segments.append(''.join(current_segment))
+            # 分批处理
+            results = []
+            for i in range(0, len(text), batch_size):
+                batch = text[i:i + batch_size]
+                translated = self._translate_batch(batch, model, tokenizer)
+                results.extend(translated)
+                
+            return results[0] if return_string else results
             
-        return segments
-        
-    def get_supported_languages(self) -> dict:
+        except Exception as e:
+            raise TranslationError(f"翻译过程出错: {str(e)}")
+    
+    def _get_model_and_tokenizer(self, pair_key: str):
+        """获取或加载模型和分词器"""
+        if pair_key not in self._models:
+            model_name = self._language_pairs[pair_key]
+            try:
+                self._models[pair_key] = MarianMTModel.from_pretrained(model_name).to(self.device)
+                self._tokenizers[pair_key] = MarianTokenizer.from_pretrained(model_name)
+            except Exception as e:
+                raise TranslationError(f"加载翻译模型失败: {str(e)}")
+                
+        return self._models[pair_key], self._tokenizers[pair_key]
+    
+    def _translate_batch(
+        self,
+        texts: List[str],
+        model: MarianMTModel,
+        tokenizer: MarianTokenizer
+    ) -> List[str]:
+        """批量翻译文本"""
+        try:
+            # 编码
+            encoded = tokenizer(texts, return_tensors="pt", padding=True, truncation=True)
+            encoded = {k: v.to(self.device) for k, v in encoded.items()}
+            
+            # 翻译
+            with torch.no_grad():
+                outputs = model.generate(**encoded)
+                
+            # 解码
+            return tokenizer.batch_decode(outputs, skip_special_tokens=True)
+            
+        except Exception as e:
+            raise TranslationError(f"批量翻译失败: {str(e)}")
+    
+    def translate_file(
+        self,
+        input_path: Union[str, Path],
+        output_path: Union[str, Path],
+        source_lang: str,
+        target_lang: str
+    ):
         """
-        获取支持的语言列表
-        
-        Returns:
-            dict: 支持的语言代码和名称
-        """
-        return self.supported_languages.copy()
-        
-    def detect_language(self, text: str) -> str:
-        """
-        检测文本语言
+        翻译文件
         
         Args:
-            text: 要检测的文本
-            
-        Returns:
-            str: 检测到的语言代码
+            input_path: 输入文件路径
+            output_path: 输出文件路径
+            source_lang: 源语言代码
+            target_lang: 目标语言代码
         """
         try:
-            detection = self.translator.detect(text)
-            return detection.lang
+            # 读取文件
+            with open(input_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+            # 翻译
+            translated = self.translate(content, source_lang, target_lang)
+            
+            # 保存结果
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(translated)
+                
         except Exception as e:
-            logger.error(f"Language detection error: {str(e)}")
-            raise 
+            raise TranslationError(f"文件翻译失败: {str(e)}")
+            
+    def get_supported_languages(self) -> List[str]:
+        """获取支持的语言列表"""
+        languages = set()
+        for pair in self._language_pairs.keys():
+            source, target = pair.split('2')
+            languages.add(source)
+            languages.add(target)
+        return sorted(list(languages)) 

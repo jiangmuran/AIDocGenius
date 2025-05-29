@@ -1,6 +1,11 @@
-from typing import Optional, Union, List
+"""
+文档处理器基类
+"""
+import os
+from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
+from .exceptions import DocumentProcessError
 from .translator import Translator
 from .summarizer import Summarizer
 from .converter import Converter
@@ -8,24 +13,98 @@ from .analyzer import Analyzer
 from .utils import load_document, save_document
 
 class DocProcessor:
-    """
-    文档处理器主类，整合所有文档处理功能
-    """
+    """文档处理器基类，提供基础的文档处理功能"""
     
-    def __init__(self, 
-                 model_name: str = "bert-base-chinese",
-                 device: str = "cuda" if torch.cuda.is_available() else "cpu"):
-        """
-        初始化文档处理器
-        
-        Args:
-            model_name: 使用的基础模型名称
-            device: 运行设备 ('cuda' 或 'cpu')
-        """
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._supported_formats = {
+            'pdf': ['.pdf'],
+            'word': ['.doc', '.docx'],
+            'text': ['.txt', '.md', '.rst'],
+            'image': ['.png', '.jpg', '.jpeg', '.tiff', '.bmp']
+        }
         self.translator = Translator()
-        self.summarizer = Summarizer(model_name=model_name, device=device)
+        self.summarizer = Summarizer(model_name="bert-base-chinese", device="cuda" if torch.cuda.is_available() else "cpu")
         self.converter = Converter()
         self.analyzer = Analyzer()
+
+    def process_document(
+        self, 
+        input_path: Union[str, Path], 
+        output_path: Optional[Union[str, Path]] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        处理文档的主要方法
+        
+        Args:
+            input_path: 输入文档路径
+            output_path: 输出路径（可选）
+            **kwargs: 额外的处理参数
+            
+        Returns:
+            Dict[str, Any]: 处理结果
+        """
+        input_path = Path(input_path)
+        if not input_path.exists():
+            raise DocumentProcessError(f"文件不存在: {input_path}")
+            
+        file_format = self._get_file_format(input_path)
+        if not file_format:
+            raise DocumentProcessError(f"不支持的文件格式: {input_path.suffix}")
+            
+        try:
+            result = self._process_by_format(input_path, file_format, **kwargs)
+            if output_path:
+                self._save_result(result, output_path)
+            return result
+        except Exception as e:
+            raise DocumentProcessError(f"处理文档时出错: {str(e)}")
+    
+    def _get_file_format(self, file_path: Path) -> Optional[str]:
+        """获取文件格式"""
+        suffix = file_path.suffix.lower()
+        for format_type, extensions in self._supported_formats.items():
+            if suffix in extensions:
+                return format_type
+        return None
+    
+    def _process_by_format(
+        self, 
+        file_path: Path, 
+        file_format: str,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """根据文件格式调用相应的处理方法"""
+        method_name = f"_process_{file_format}"
+        if hasattr(self, method_name):
+            return getattr(self, method_name)(file_path, **kwargs)
+        raise NotImplementedError(f"未实现的文件格式处理方法: {file_format}")
+    
+    def _save_result(self, result: Dict[str, Any], output_path: Union[str, Path]):
+        """保存处理结果"""
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 根据输出路径的后缀决定保存格式
+        if output_path.suffix == '.json':
+            import json
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+        elif output_path.suffix == '.txt':
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(str(result))
+        else:
+            raise DocumentProcessError(f"不支持的输出格式: {output_path.suffix}")
+            
+    def validate_file(self, file_path: Union[str, Path]) -> bool:
+        """验证文件是否可处理"""
+        file_path = Path(file_path)
+        return (
+            file_path.exists() and 
+            file_path.is_file() and 
+            self._get_file_format(file_path) is not None
+        )
 
     def generate_summary(self, 
                         document_path: Union[str, Path],
