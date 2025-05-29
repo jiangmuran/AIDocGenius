@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIDocGenius - 智能文档助手</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .feature-icon {
+            font-size: 2rem;
+            color: #0d6efd;
+            margin-bottom: 1rem;
+        }
+        .drop-zone {
+            border: 2px dashed #0d6efd;
+            border-radius: 5px;
+            padding: 2rem;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+        .drop-zone:hover {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-file-earmark-text"></i>
+                AIDocGenius
+            </a>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="row mb-5">
+            <div class="col-md-6 mx-auto text-center">
+                <h1>智能文档助手</h1>
+                <p class="lead">让文档处理变得智能而简单</p>
+            </div>
+        </div>
+
+        <div class="row mb-5">
+            <div class="col-md-3">
+                <div class="text-center">
+                    <i class="bi bi-file-text feature-icon"></i>
+                    <h5>文档摘要</h5>
+                    <p>智能生成文档摘要</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <i class="bi bi-translate feature-icon"></i>
+                    <h5>多语言翻译</h5>
+                    <p>支持40+种语言翻译</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <i class="bi bi-graph-up feature-icon"></i>
+                    <h5>文档分析</h5>
+                    <p>深入分析文档结构</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <i class="bi bi-arrow-left-right feature-icon"></i>
+                    <h5>格式转换</h5>
+                    <p>支持多种格式转换</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-4">文档处理</h5>
+                        <div class="drop-zone mb-3" id="dropZone">
+                            <i class="bi bi-cloud-upload display-4"></i>
+                            <p class="mb-0">拖放文件到这里或点击上传</p>
+                            <input type="file" id="fileInput" class="d-none">
+                        </div>
+                        <div class="mb-3">
+                            <select class="form-select" id="operationType">
+                                <option value="summarize">生成摘要</option>
+                                <option value="translate">翻译文档</option>
+                                <option value="analyze">文档分析</option>
+                                <option value="convert">格式转换</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="targetLanguageContainer" style="display: none;">
+                            <select class="form-select" id="targetLanguage">
+                                <option value="en">英语</option>
+                                <option value="zh">中文</option>
+                                <option value="ja">日语</option>
+                                <option value="ko">韩语</option>
+                                <option value="fr">法语</option>
+                                <option value="de">德语</option>
+                                <option value="es">西班牙语</option>
+                                <option value="it">意大利语</option>
+                                <option value="ru">俄语</option>
+                                <option value="ar">阿拉伯语</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="outputFormatContainer" style="display: none;">
+                            <select class="form-select" id="outputFormat">
+                                <option value="txt">TXT</option>
+                                <option value="md">Markdown</option>
+                                <option value="docx">Word</option>
+                                <option value="html">HTML</option>
+                                <option value="json">JSON</option>
+                                <option value="yaml">YAML</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary w-100" id="processButton">
+                            处理文档
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card mt-4" id="resultCard" style="display: none;">
+                    <div class="card-body">
+                        <h5 class="card-title">处理结果</h5>
+                        <div id="resultContent" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">© 2024 AIDocGenius. 联系我们：<a href="mailto:jmr@jiangmuran.com">jmr@jiangmuran.com</a></p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/js/main.js"></script>
+</body>
+</html> 
