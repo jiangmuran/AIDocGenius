@@ -22,6 +22,12 @@ English | [简体中文](docs/README_CN.md)
 - 📦 **Batch Processing** - Process multiple documents at once, auto-generate reports
 - 🌐 **Web Interface** - Beautiful and easy-to-use GUI with drag-and-drop file upload
 
+### 🆕 NEW Features (v1.1.0)
+
+- 🔍 **Document Comparison** - Compare similarity and differences between documents
+- 🔗 **Document Merging** - Merge multiple documents with smart duplicate removal
+- 🧪 **Complete Test Suite** - 46+ unit tests ensuring quality and reliability
+
 ### 🎨 Supported Formats
 
 | Input Formats | Output Formats |
@@ -242,6 +248,34 @@ results = processor.batch_process(
 )
 ```
 
+### 6. Compare Documents (NEW!)
+
+```python
+# Compare two documents
+comparison = processor.compare_documents("doc1.txt", "doc2.txt")
+
+print(f"Similarity: {comparison['similarity']:.2%}")
+print(f"Word count difference: {comparison['statistics']['length_diff']}")
+print(f"Number of differences: {len(comparison['differences'])}")
+```
+
+### 7. Merge Documents (NEW!)
+
+```python
+# Standard merge
+processor.merge_documents(
+    ["intro.md", "chapter1.md", "chapter2.md"],
+    "book.md"
+)
+
+# Smart merge (remove duplicates)
+processor.merge_documents(
+    ["doc1.txt", "doc2.txt", "doc3.txt"],
+    "merged.txt",
+    smart_merge=True
+)
+```
+
 ## 🛠️ Tech Stack
 
 ### Backend
@@ -334,31 +368,40 @@ results = processor.batch_process(
 
 | Metric | Value |
 |--------|-------|
-| **Python Files** | 15+ |
-| **Total Lines of Code** | 2000+ |
-| **Core Modules** | 5 (Processor, Translator, Summarizer, Analyzer, Converter) |
+| **Python Files** | 17+ |
+| **Total Lines of Code** | 2500+ |
+| **Core Modules** | 7 (Processor, Translator, Summarizer, Analyzer, Converter, Comparator, Merger) |
 | **Example Programs** | 7 |
 | **API Endpoints** | 7 |
 | **Supported Languages** | 40+ |
 | **Supported Formats** | 6 input + 6 output |
-| **Test Coverage** | 100% core features |
+| **Test Coverage** | 78%+ (100% core features) |
+| **Unit Tests** | 46+ |
 | **Dependencies** | 11 packages |
 
 ## 🗺️ Roadmap
 
-### ✅ v1.0.0 (Current)
+### ✅ v1.0.0 (Released)
 - [x] Core document processing features
 - [x] Web interface
 - [x] RESTful API
 - [x] Batch processing
 - [x] Complete documentation
 
-### 🔮 v1.1.0 (Planned)
+### ✅ v1.1.0 (Current - Enhanced)
+- [x] Document comparison feature
+- [x] Document merging with smart deduplication
+- [x] Comprehensive test suite (46+ tests)
+- [x] Improved error handling
+- [x] Performance optimizations
+
+### 🔮 v1.2.0 (Planned)
 - [ ] Advanced ML-based summarization
 - [ ] More translation engines (DeepL, Azure)
-- [ ] Document comparison feature
+- [ ] Document clustering
 - [ ] Export to more formats (RTF, ODT)
 - [ ] CLI enhancements
+- [ ] Progress bars for batch operations
 
 ### 🚀 v2.0.0 (Future)
 - [ ] AI-powered content generation

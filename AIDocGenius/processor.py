@@ -15,6 +15,8 @@ from .translator import Translator
 from .summarizer import Summarizer
 from .converter import Converter
 from .analyzer import Analyzer
+from .comparator import DocumentComparator
+from .merger import DocumentMerger
 from .utils import load_document, save_document
 
 class DocProcessor:
@@ -34,6 +36,8 @@ class DocProcessor:
         self._summarizer = None
         self.converter = Converter()
         self.analyzer = Analyzer()
+        self.comparator = DocumentComparator()
+        self.merger = DocumentMerger()
     
     @property
     def summarizer(self):
@@ -239,4 +243,52 @@ class DocProcessor:
                     except Exception as e:
                         results[str(file)][operation] = f"Error: {str(e)}"
                         
-        return results 
+        return results
+    
+    def compare_documents(
+        self,
+        document1_path: Union[str, Path],
+        document2_path: Union[str, Path]
+    ) -> Dict[str, Any]:
+        """
+        比较两个文档
+        
+        Args:
+            document1_path: 第一个文档路径
+            document2_path: 第二个文档路径
+            
+        Returns:
+            dict: 比较结果（相似度、差异等）
+        """
+        content1 = load_document(document1_path)
+        content2 = load_document(document2_path)
+        
+        return self.comparator.compare(content1, content2)
+    
+    def merge_documents(
+        self,
+        document_paths: List[Union[str, Path]],
+        output_path: Union[str, Path],
+        smart_merge: bool = False
+    ) -> None:
+        """
+        合并多个文档
+        
+        Args:
+            document_paths: 文档路径列表
+            output_path: 输出文件路径
+            smart_merge: 是否使用智能合并（移除重复等）
+        """
+        if smart_merge:
+            # 智能合并
+            documents = []
+            for path in document_paths:
+                content = load_document(path)
+                documents.append(content)
+            
+            merged_content = self.merger.smart_merge(documents)
+            save_document(merged_content, output_path)
+        else:
+            # 普通合并
+            paths = [Path(p) for p in document_paths]
+            self.merger.merge_files(paths, Path(output_path)) 
