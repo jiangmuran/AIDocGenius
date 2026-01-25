@@ -1,113 +1,112 @@
-# 贡献指南
+# Contributing to AIDocGenius
 
-感谢您考虑为AIDocGenius项目做出贡献！我们欢迎任何形式的贡献，包括但不限于：
+Thank you for your interest in contributing to AIDocGenius! This document provides guidelines for contributing to the project.
 
-- 代码贡献
-- 文档改进
-- Bug报告
-- 功能建议
-- 测试用例
+[中文版本](docs/CONTRIBUTING_CN.md)
 
-## 开发环境设置
+## How to Contribute
 
-1. Fork项目到您的GitHub账户
+### Reporting Bugs
 
-2. 克隆项目到本地：
+Before creating bug reports, please check the existing issues to avoid duplicates. When creating a bug report, please include:
+
+- A clear and descriptive title
+- Steps to reproduce the problem
+- Expected behavior
+- Actual behavior
+- Python version and OS
+- Any relevant logs or screenshots
+
+### Suggesting Enhancements
+
+Enhancement suggestions are welcome! Please include:
+
+- A clear and descriptive title
+- Detailed description of the proposed feature
+- Examples of how the feature would be used
+- Any alternative solutions considered
+
+### Pull Requests
+
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/AmazingFeature`)
+3. Make your changes
+4. Add or update tests as needed
+5. Ensure tests pass: `python test_basic.py`
+6. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+7. Push to the branch (`git push origin feature/AmazingFeature`)
+8. Open a Pull Request
+
+### Coding Standards
+
+- Follow PEP 8 style guide
+- Add docstrings for functions and classes
+- Write clear commit messages
+- Keep functions focused and modular
+- Add comments for complex logic
+
+### Testing
+
+Before submitting a pull request, ensure:
+
+- All existing tests pass
+- New features have corresponding tests
+- Code coverage is maintained or improved
+
+Run tests with:
 ```bash
-git clone https://github.com/YOUR_USERNAME/AIDocGenius.git
+python test_basic.py
+```
+
+### Documentation
+
+- Update README.md if adding new features
+- Add docstrings to new functions/classes
+- Update examples if changing API
+- Keep documentation clear and concise
+
+## Development Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/jiangmuran/AIDocGenius.git
 cd AIDocGenius
 ```
 
-3. 安装开发依赖：
+2. Install dependencies:
 ```bash
-pip install -e ".[dev]"
+pip install -r requirements.txt
 ```
 
-4. 创建新分支：
+3. Run tests:
 ```bash
-git checkout -b feature/your-feature-name
+python test_basic.py
 ```
 
-## 代码风格
-
-我们使用以下工具来保持代码质量：
-
-- black：代码格式化
-- isort：导入语句排序
-- flake8：代码风格检查
-
-在提交代码之前，请运行：
-
+4. Start development server:
 ```bash
-black .
-isort .
-flake8
+python app.py
 ```
 
-## 提交Pull Request
+## Code Review Process
 
-1. 确保您的代码符合我们的代码风格要求
-2. 更新测试用例并确保所有测试通过
-3. 更新相关文档
-4. 提交代码时使用清晰的提交信息
-5. 创建Pull Request并描述您的更改
+- All submissions require review
+- Reviewers may request changes
+- Once approved, maintainers will merge
+- Keep PRs focused on a single feature/fix
 
-## 提交Bug报告
+## Community
 
-如果您发现了bug，请创建一个Issue并包含以下信息：
+- Be respectful and constructive
+- Help others in discussions
+- Share your use cases and examples
+- Report security issues privately
 
-- 问题的详细描述
-- 复现步骤
-- 期望的行为
-- 实际的行为
-- 环境信息（操作系统、Python版本等）
-- 相关的日志输出
+## Questions?
 
-## 功能建议
+Feel free to:
+- Open an issue for questions
+- Email: jmr@jiangmuran.com
+- Check existing documentation
 
-如果您有新功能的建议，请创建一个Issue并：
-
-- 清晰地描述新功能
-- 解释为什么这个功能是有用的
-- 提供可能的实现方案
-- 考虑向后兼容性
-
-## 文档贡献
-
-文档改进对项目非常重要。如果您发现文档中的问题或想添加新内容：
-
-1. 找到相关的文档文件
-2. 进行必要的更改
-3. 提交Pull Request
-
-## 测试
-
-- 添加新功能时，请包含相应的测试用例
-- 确保所有测试都能通过：
-```bash
-pytest
-```
-
-## 发布流程
-
-1. 更新版本号（遵循语义化版本）
-2. 更新CHANGELOG.md
-3. 创建新的发布标签
-4. 发布到PyPI
-
-## 行为准则
-
-请保持专业和友善。我们希望维护一个开放和包容的社区。
-
-## 许可证
-
-通过贡献代码，您同意您的贡献将在MIT许可证下发布。
-
-## 联系方式
-
-如果您有任何问题，请通过以下方式联系我们：
-
-- GitHub Issues
-- 电子邮件：[jmr@jiangmuran.com]
-
-再次感谢您的贡献！ 
+Thank you for contributing! 🎉
