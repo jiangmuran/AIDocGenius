@@ -5,6 +5,11 @@ import os
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
+try:
+    import torch
+except ImportError:
+    torch = None
+
 from .exceptions import DocumentProcessError
 from .translator import Translator
 from .summarizer import Summarizer
@@ -23,10 +28,20 @@ class DocProcessor:
             'text': ['.txt', '.md', '.rst'],
             'image': ['.png', '.jpg', '.jpeg', '.tiff', '.bmp']
         }
-        self.translator = Translator()
-        self.summarizer = Summarizer(model_name="bert-base-chinese", device="cuda" if torch.cuda.is_available() else "cpu")
+        # 默认使用 Google Translate（更轻量级）
+        self.translator = Translator(use_google=True)
+        # 延迟初始化 summarizer，避免在导入时就加载模型
+        self._summarizer = None
         self.converter = Converter()
         self.analyzer = Analyzer()
+    
+    @property
+    def summarizer(self):
+        """延迟加载 summarizer"""
+        if self._summarizer is None:
+            # 默认使用简单摘要算法（无需下载模型）
+            self._summarizer = Summarizer(use_simple=True)
+        return self._summarizer
 
     def process_document(
         self, 
@@ -122,7 +137,7 @@ class DocProcessor:
             str: 生成的摘要文本
         """
         content = load_document(document_path)
-        return self.summarizer.generate(content, max_length, min_length)
+        return self.summarizer.generate_summary(content, max_length=max_length, min_length=min_length)
 
     def translate(self,
                  document_path: Union[str, Path],
@@ -140,7 +155,23 @@ class DocProcessor:
             str: 翻译后的文本
         """
         content = load_document(document_path)
-        return self.translator.translate(content, target_language, source_language)
+        # translator.translate 的参数顺序是 (text, source_lang, target_lang)
+        # 语言代码映射
+        lang_map = {
+            "en": "en", "english": "en", "英文": "en",
+            "zh": "zh", "chinese": "zh", "中文": "zh",
+            "ja": "ja", "japanese": "ja", "日语": "ja",
+            "ko": "ko", "korean": "ko", "韩语": "ko"
+        }
+        
+        target_lang = lang_map.get(target_language.lower(), target_language.lower())
+        source_lang = lang_map.get(source_language.lower(), source_language.lower()) if source_language else "en"
+        
+        # 直接调用 translator，它会自动处理语言对和回退（包括 Google Translate）
+        try:
+            return self.translator.translate(content, source_lang, target_lang)
+        except Exception as e:
+            raise DocumentProcessError(f"翻译失败: {str(e)}")
 
     def convert(self,
                 input_path: Union[str, Path],

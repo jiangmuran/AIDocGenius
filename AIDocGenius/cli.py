@@ -64,13 +64,18 @@ def translate_command(args: argparse.Namespace) -> Optional[str]:
     """翻译命令"""
     translator = Translator()
     try:
+        source_lang = args.source if args.source != "auto" else "en"
         if args.output:
-            translator.translate_file(args.input, args.output, args.source, args.target)
+            translator.translate_file(args.input, args.output, source_lang, args.target)
         else:
             with open(args.input, 'r', encoding='utf-8') as f:
                 content = f.read()
-            return translator.translate(content, args.source, args.target)
+            result = translator.translate(content, source_lang, args.target)
+            return result
     except AIDocGeniusError as e:
+        print(f"错误: {str(e)}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
         print(f"错误: {str(e)}", file=sys.stderr)
         sys.exit(1)
 

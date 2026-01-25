@@ -51,7 +51,16 @@ class Converter:
             converted_content = converter(content, format_options or {})
             
             # 保存文档
-            save_document(converted_content, output_path, format_options)
+            # 对于 docx 格式，需要特殊处理
+            if output_path.suffix.lower() == '.docx':
+                if isinstance(converted_content, Document):
+                    converted_content.save(str(output_path))
+                else:
+                    doc = Document()
+                    doc.add_paragraph(str(converted_content))
+                    doc.save(str(output_path))
+            else:
+                save_document(converted_content, output_path, format_options)
             logger.info(f"Converted {input_path} to {output_path}")
             
         except Exception as e:
@@ -79,26 +88,20 @@ class Converter:
         else:
             return str(content)
             
-    def _convert_to_docx(self, content: Any, options: dict) -> Document:
+    def _convert_to_docx(self, content: Any, options: dict) -> str:
         """
-        转换为Word文档格式
+        转换为Word文档格式（返回路径标记）
         """
-        doc = Document()
-        
+        # 返回内容，由 save_document 处理实际转换
         if isinstance(content, str):
-            # 按段落分割
-            paragraphs = content.split('\n\n')
-            for p in paragraphs:
-                doc.add_paragraph(p.strip())
+            return content
         elif isinstance(content, dict):
-            # 添加标题
-            doc.add_heading('Document Content', 0)
-            # 添加内容
+            # 将字典转换为文本格式
+            text = "Document Content\n\n"
             for key, value in content.items():
-                doc.add_heading(key, level=1)
-                doc.add_paragraph(str(value))
-                
-        return doc
+                text += f"{key}\n{value}\n\n"
+            return text
+        return str(content)
         
     def _convert_to_html(self, content: Any, options: dict) -> str:
         """

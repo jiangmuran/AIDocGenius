@@ -79,11 +79,25 @@ def save_document(content: Any, file_path: Union[str, Path], format_options: dic
         elif suffix == '.md':
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
+        
+        elif suffix == '.html':
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(str(content))
                 
         elif suffix == '.docx':
-            doc = Document()
-            doc.add_paragraph(content)
-            doc.save(file_path)
+            if isinstance(content, Document):
+                content.save(str(file_path))
+            else:
+                doc = Document()
+                if isinstance(content, str):
+                    # 按段落分割
+                    paragraphs = content.split('\n\n')
+                    for p in paragraphs:
+                        if p.strip():
+                            doc.add_paragraph(p.strip())
+                else:
+                    doc.add_paragraph(str(content))
+                doc.save(str(file_path))
             
         elif suffix == '.pdf':
             # PDF generation requires additional libraries

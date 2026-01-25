@@ -4,8 +4,14 @@
 from typing import List, Optional, Union
 from pathlib import Path
 
-import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
+try:
+    import torch
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    torch = None
+
 from .exceptions import SummarizationError
 
 class Summarizer:
@@ -13,29 +19,36 @@ class Summarizer:
     
     def __init__(
         self,
-        model_name: str = "IDEA-CCNL/Randeng-Pegasus-238M-Summary-Chinese",
+        model_name: Optional[str] = None,
         device: Optional[str] = None,
         max_length: int = 1024,
-        min_length: int = 50
+        min_length: int = 50,
+        use_simple: bool = True
     ):
         """
         初始化摘要生成器
         
         Args:
-            model_name: 预训练模型名称
+            model_name: 预训练模型名称（如果为 None 且 use_simple=True，则使用简单摘要）
             device: 运行设备
             max_length: 最大输出长度
             min_length: 最小输出长度
+            use_simple: 是否使用简单摘要算法（无需模型）
         """
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.use_simple = use_simple or not TRANSFORMERS_AVAILABLE
+        self.device = device or ("cuda" if torch and torch.cuda.is_available() else "cpu")
         self.max_length = max_length
         self.min_length = min_length
+        self.model_name = model_name or "IDEA-CCNL/Randeng-Pegasus-238M-Summary-Chinese"
         
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModelForSeq2SeqGeneration.from_pretrained(model_name).to(self.device)
-        except Exception as e:
-            raise SummarizationError(f"加载摘要模型失败: {str(e)}")
+        if not self.use_simple and TRANSFORMERS_AVAILABLE:
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                self.model = AutoModelForSeq2SeqGeneration.from_pretrained(self.model_name).to(self.device)
+            except Exception as e:
+                # 如果加载模型失败，回退到简单摘要
+                self.use_simple = True
+                print(f"警告: 加载摘要模型失败，将使用简单摘要算法: {str(e)}")
     
     def generate_summary(
         self,
@@ -53,13 +66,19 @@ class Summarizer:
             text: 输入文本
             max_length: 最大输出长度
             min_length: 最小输出长度
-            num_beams: beam search的beam数量
-            length_penalty: 长度惩罚系数
-            no_repeat_ngram_size: 避免重复的n-gram大小
+            num_beams: beam search的beam数量（仅用于模型）
+            length_penalty: 长度惩罚系数（仅用于模型）
+            no_repeat_ngram_size: 避免重复的n-gram大小（仅用于模型）
             
         Returns:
             str: 生成的摘要
         """
+        if self.use_simple:
+            return self._generate_simple_summary(text, max_length, min_length)
+        
+        if not TRANSFORMERS_AVAILABLE:
+            return self._generate_simple_summary(text, max_length, min_length)
+            
         try:
             # 编码输入
             inputs = self.tokenizer(
@@ -86,7 +105,47 @@ class Summarizer:
             return summary
             
         except Exception as e:
-            raise SummarizationError(f"生成摘要失败: {str(e)}")
+            # 如果模型生成失败，回退到简单摘要
+            return self._generate_simple_summary(text, max_length, min_length)
+    
+    def _generate_simple_summary(
+        self,
+        text: str,
+        max_length: Optional[int] = None,
+        min_length: Optional[int] = None
+    ) -> str:
+        """使用简单算法生成摘要（提取前N个句子）"""
+        import re
+        
+        # 分割句子
+        sentences = re.split(r'[。！？.!?]\s*', text)
+        sentences = [s.strip() for s in sentences if s.strip()]
+        
+        if not sentences:
+            return text[:max_length or 200] if max_length else text[:200]
+        
+        # 计算目标句子数
+        target_length = max_length or 200
+        avg_sentence_length = sum(len(s) for s in sentences) / len(sentences) if sentences else 0
+        target_sentences = max(1, int(target_length / (avg_sentence_length or 50)))
+        target_sentences = min(target_sentences, len(sentences))
+        
+        # 选择前N个句子
+        summary_sentences = sentences[:target_sentences]
+        summary = '。'.join(summary_sentences)
+        
+        # 确保满足长度要求
+        if max_length and len(summary) > max_length:
+            summary = summary[:max_length]
+        if min_length and len(summary) < min_length and len(sentences) > target_sentences:
+            # 如果太短，添加更多句子
+            additional = min(3, len(sentences) - target_sentences)
+            summary_sentences = sentences[:target_sentences + additional]
+            summary = '。'.join(summary_sentences)
+            if max_length and len(summary) > max_length:
+                summary = summary[:max_length]
+        
+        return summary
     
     def generate_file_summary(
         self,

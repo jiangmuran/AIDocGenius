@@ -13,15 +13,30 @@ class Analyzer:
         """
         初始化分析器
         """
+        # 下载所需的 NLTK 资源
         try:
-            nltk.data.find('tokenizers/punkt')
+            nltk.data.find('tokenizers/punkt_tab')
         except LookupError:
-            nltk.download('punkt')
+            try:
+                nltk.download('punkt_tab', quiet=True)
+            except Exception:
+                # 如果 punkt_tab 不可用，尝试 punkt
+                try:
+                    nltk.data.find('tokenizers/punkt')
+                except LookupError:
+                    nltk.download('punkt', quiet=True)
             
         try:
-            nltk.data.find('averaged_perceptron_tagger')
+            nltk.data.find('taggers/averaged_perceptron_tagger_eng')
         except LookupError:
-            nltk.download('averaged_perceptron_tagger')
+            try:
+                nltk.download('averaged_perceptron_tagger_eng', quiet=True)
+            except Exception:
+                # 回退到旧版本资源名
+                try:
+                    nltk.data.find('taggers/averaged_perceptron_tagger')
+                except LookupError:
+                    nltk.download('averaged_perceptron_tagger', quiet=True)
             
         logger.info("Initialized analyzer")
         

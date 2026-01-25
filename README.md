@@ -19,46 +19,84 @@ AIDocGenius 是一个强大的智能文档处理助手，它能够帮助用户�
 ### 环境要求
 
 - Python 3.8+
-- Docker (可选，用于容器化部署)
+- 网络连接（用于翻译功能）
 
-### 安装
+### 快速安装（3 步）
 
-1. 克隆仓库：
+#### Windows 用户
+
+1. **安装依赖**
+   ```
+   双击运行 "安装依赖.bat"
+   ```
+
+2. **启动服务**
+   ```
+   双击运行 "启动服务.bat"
+   ```
+
+3. **访问界面**
+   ```
+   浏览器打开 http://localhost:8000
+   ```
+
+#### 其他系统
+
 ```bash
+# 1. 克隆项目
 git clone https://github.com/jiangmuran/AIDocGenius.git
 cd AIDocGenius
-```
 
-2. 安装依赖：
-```bash
+# 2. 安装依赖
 pip install -r requirements.txt
-```
 
-### 使用方式
-
-#### 1. Python API
-
-```python
-from aidocgenius import DocProcessor
-
-processor = DocProcessor()
-result = processor.process_document("path/to/your/document")
-```
-
-#### 2. 命令行工具
-
-```bash
-python -m aidocgenius process --input document.pdf --output summary.txt
-```
-
-#### 3. Web API
-
-启动 Web 服务：
-```bash
+# 3. 启动服务
 python app.py
 ```
 
-访问 http://localhost:5000 使用 Web 界面。
+### 三种使用方式
+
+#### 方式一：Web 界面（最简单）
+
+```bash
+# Windows: 双击 "启动服务.bat"
+# 其他系统:
+python app.py
+```
+
+访问 http://localhost:8000，即可使用图形界面！
+
+#### 方式二：Python API（最灵活）
+
+```python
+from AIDocGenius import DocProcessor
+
+processor = DocProcessor()
+
+# 生成摘要
+summary = processor.generate_summary("document.txt", max_length=200)
+
+# 翻译文档
+translation = processor.translate("doc.txt", target_language="en")
+
+# 分析文档
+analysis = processor.analyze("doc.txt")
+
+# 格式转换
+processor.convert("input.md", "output.html")
+```
+
+#### 方式三：运行示例（学习推荐）
+
+```bash
+# 运行综合演示
+python demo.py
+
+# 运行具体示例
+python examples/示例1_文档摘要.py
+python examples/示例2_文档翻译.py
+python examples/示例3_文档分析.py
+```
 
 ## 📖 详细文档
 
