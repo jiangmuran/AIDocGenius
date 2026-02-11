@@ -90,7 +90,31 @@
                                 <option value="translate">翻译文档</option>
                                 <option value="analyze">文档分析</option>
                                 <option value="convert">格式转换</option>
+                                <option value="batch">批量处理</option>
                             </select>
+                        </div>
+                        <div class="mb-3" id="batchOptions" style="display: none;">
+                            <label class="form-label">批量操作</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="summarize" id="batchSummarize" checked>
+                                <label class="form-check-label" for="batchSummarize">摘要</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="translate" id="batchTranslate">
+                                <label class="form-check-label" for="batchTranslate">翻译</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="analyze" id="batchAnalyze" checked>
+                                <label class="form-check-label" for="batchAnalyze">分析</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="convert" id="batchConvert">
+                                <label class="form-check-label" for="batchConvert">转换</label>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" value="zip" id="batchZip" checked>
+                                <label class="form-check-label" for="batchZip">生成 ZIP 下载</label>
+                            </div>
                         </div>
                         <div class="mb-3" id="targetLanguageContainer" style="display: none;">
                             <select class="form-select" id="targetLanguage">

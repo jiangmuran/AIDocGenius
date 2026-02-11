@@ -267,6 +267,8 @@ class DocProcessor:
                      operations: List[str],
                      report: bool = False,
                      report_formats: Optional[List[str]] = None,
+                     report_only: bool = False,
+                     report_prefix: Optional[str] = None,
                      **kwargs) -> dict:
         """
         批量处理文档
@@ -287,9 +289,13 @@ class DocProcessor:
 
         output_path_resolved = output_path.resolve()
         
+        import time
+
         total_files = 0
         processed_files = 0
         error_count = 0
+        batch_start = time.time()
+        report_files = []
 
         for file in input_path.glob("**/*"):
             if not file.is_file():
@@ -302,7 +308,16 @@ class DocProcessor:
 
             total_files += 1
             results[str(file)] = {}
+            file_entry = {
+                "path": str(file),
+                "operations": {},
+                "outputs": {},
+                "errors": {},
+                "seconds": 0.0
+            }
+            file_start = time.time()
             for operation in operations:
+                op_start = time.time()
                 try:
                     rel_path = file.relative_to(input_path)
                     target_dir = output_path / rel_path.parent
@@ -314,6 +329,7 @@ class DocProcessor:
                         output_file = target_dir / f"{file.stem}.summary.txt"
                         save_document(summary, output_file)
                         results[str(file)]["summary_output"] = str(output_file)
+                        file_entry["outputs"]["summarize"] = str(output_file)
                     elif operation == "translate":
                         translation = self.translate(file, **kwargs)
                         results[str(file)]["translation"] = translation
@@ -321,12 +337,14 @@ class DocProcessor:
                         output_file = target_dir / f"{file.stem}.translated.{target_language}.txt"
                         save_document(translation, output_file)
                         results[str(file)]["translation_output"] = str(output_file)
+                        file_entry["outputs"]["translate"] = str(output_file)
                     elif operation == "analyze":
                         analysis = self.analyze(file, **kwargs)
                         results[str(file)]["analysis"] = analysis
                         output_file = target_dir / f"{file.stem}.analysis.json"
                         save_document(analysis, output_file)
                         results[str(file)]["analysis_output"] = str(output_file)
+                        file_entry["outputs"]["analyze"] = str(output_file)
                     elif operation == "convert":
                         output_format = kwargs.get("output_format")
                         if not output_format:
@@ -334,13 +352,26 @@ class DocProcessor:
                         output_file = target_dir / f"{file.stem}.{output_format.lstrip('.')}"
                         self.convert(file, output_file)
                         results[str(file)]["converted_output"] = str(output_file)
+                        file_entry["outputs"]["convert"] = str(output_file)
                     else:
                         results[str(file)][operation] = "Error: Unsupported operation"
+                        file_entry["errors"][operation] = "Unsupported operation"
+                    file_entry["operations"][operation] = {
+                        "status": "ok",
+                        "seconds": round(time.time() - op_start, 4)
+                    }
                 except Exception as e:
                     results[str(file)][operation] = f"Error: {str(e)}"
+                    file_entry["errors"][operation] = str(e)
+                    file_entry["operations"][operation] = {
+                        "status": "error",
+                        "seconds": round(time.time() - op_start, 4)
+                    }
                     error_count += 1
 
             processed_files += 1
+            file_entry["seconds"] = round(time.time() - file_start, 4)
+            report_files.append(file_entry)
                         
         report_payload = None
         if report:
@@ -354,13 +385,16 @@ class DocProcessor:
                 "total_files": total_files,
                 "processed_files": processed_files,
                 "error_count": error_count,
-                "results": results
+                "seconds": round(time.time() - batch_start, 4),
+                "files": report_files
             }
 
             report_payload = summary_report
 
+            report_prefix = report_prefix or "batch_report"
+
             if "json" in report_formats:
-                report_path = output_path / "batch_report.json"
+                report_path = output_path / f"{report_prefix}.json"
                 save_document(summary_report, report_path)
 
             if "md" in report_formats:
@@ -383,25 +417,28 @@ class DocProcessor:
                             report_lines.append(f"  - {key}: {value}")
                         elif isinstance(value, str) and value.startswith("Error:"):
                             report_lines.append(f"  - {key}: {value}")
-                report_path = output_path / "batch_report.md"
+                report_path = output_path / f"{report_prefix}.md"
                 save_document("\n".join(report_lines), report_path)
 
             if "csv" in report_formats:
                 import csv
 
-                report_path = output_path / "batch_report.csv"
+                report_path = output_path / f"{report_prefix}.csv"
                 with open(report_path, "w", newline="", encoding="utf-8") as csv_file:
                     writer = csv.writer(csv_file)
-                    writer.writerow(["file", "operation", "status", "output", "error"])
-                    for file_path, result in results.items():
-                        for key, value in result.items():
-                            if key.endswith("_output"):
-                                operation = key.replace("_output", "")
-                                writer.writerow([file_path, operation, "ok", value, ""])
-                            elif isinstance(value, str) and value.startswith("Error:"):
-                                writer.writerow([file_path, key, "error", "", value])
+                    writer.writerow(["file", "operation", "status", "output", "error", "seconds"])
+                    for file_entry in report_files:
+                        file_path = file_entry["path"]
+                        for op_name, op_info in file_entry["operations"].items():
+                            status = op_info.get("status")
+                            seconds = op_info.get("seconds")
+                            output = file_entry["outputs"].get(op_name, "")
+                            error = file_entry["errors"].get(op_name, "")
+                            writer.writerow([file_path, op_name, status, output, error, seconds])
 
         if report_payload is not None:
+            if report_only:
+                return report_payload
             return {
                 "results": results,
                 "report": report_payload

@@ -164,6 +164,9 @@ python -m AIDocGenius.cli convert "README.md" "README.html"
 
 # Warm up small model
 python -m AIDocGenius.cli model warmup --model-name "google/flan-t5-small"
+
+# Batch report only
+python -m AIDocGenius.cli batch "input" "output" --operations summarize,analyze --report --report-only
 ```
 
 #### Method 5: REST API
@@ -191,6 +194,8 @@ All JSON endpoints return:
   "request_id": "uuid"
 }
 ```
+
+`/batch` with `zip_output=false` returns the report structure directly.
 
 ## Test Results
 
@@ -283,6 +288,8 @@ Batch processing writes outputs into `output_dir` with standardized filenames:
 - `*.analysis.json`
 - `*.<output_format>` (for convert)
 - `batch_report.json`, `batch_report.md`, `batch_report.csv`
+
+Use `report_prefix` to avoid overwriting previous reports.
 
 ### 6. Compare Documents
 

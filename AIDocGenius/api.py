@@ -281,7 +281,9 @@ async def batch_process(
     source_language: Optional[str] = Query(default=None),
     report: bool = Query(default=True),
     report_formats: Optional[str] = Query(default="json"),
-    zip_output: bool = Query(default=True)
+    zip_output: bool = Query(default=True),
+    report_only: bool = Query(default=False),
+    report_prefix: Optional[str] = Query(default=None)
 ):
     """
     批量处理文档
@@ -299,6 +301,8 @@ async def batch_process(
         ops = _parse_list(operations)
         report_format_list = _parse_list(report_formats)
 
+        effective_report = report or report_only or (not zip_output)
+
         results = processor.batch_process(
             input_dir=input_path,
             output_dir=output_path,
@@ -306,8 +310,10 @@ async def batch_process(
             output_format=output_format,
             target_language=target_language,
             source_language=source_language,
-            report=report,
-            report_formats=report_format_list
+            report=effective_report,
+            report_formats=report_format_list,
+            report_only=report_only or (not zip_output),
+            report_prefix=report_prefix
         )
 
         if not zip_output:

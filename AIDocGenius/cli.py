@@ -98,6 +98,8 @@ def create_parser() -> argparse.ArgumentParser:
     batch_parser.add_argument("--output-format", help="转换输出格式")
     batch_parser.add_argument("--report", action="store_true", help="生成批处理报告")
     batch_parser.add_argument("--report-formats", help="报告格式，逗号分隔（json,md,csv）")
+    batch_parser.add_argument("--report-only", action="store_true", help="仅返回报告结构")
+    batch_parser.add_argument("--report-prefix", help="报告文件前缀")
 
     # 模型预热命令
     warmup_parser = subparsers.add_parser("model", help="模型管理", parents=[common_parser])
@@ -188,7 +190,9 @@ def batch_command(args: argparse.Namespace) -> Optional[str]:
         source_language=args.source_language,
         output_format=args.output_format,
         report=args.report,
-        report_formats=report_formats
+        report_formats=report_formats,
+        report_only=args.report_only,
+        report_prefix=args.report_prefix
     )
     return str(result)
 

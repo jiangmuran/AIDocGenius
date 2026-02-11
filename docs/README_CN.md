@@ -150,6 +150,9 @@ python -m AIDocGenius.cli convert "README.md" "README.html"
 
 # 预热小模型
 python -m AIDocGenius.cli model warmup --model-name "google/flan-t5-small"
+
+# 仅输出报告
+python -m AIDocGenius.cli batch "input" "output" --operations summarize,analyze --report --report-only
 ```
 
 #### 方式五：REST API
@@ -177,6 +180,8 @@ GET  /health
   "request_id": "uuid"
 }
 ```
+
+`/batch` 配合 `zip_output=false` 会直接返回报告结构。
 
 ## 测试
 
@@ -261,6 +266,8 @@ results = processor.batch_process(
 - `*.analysis.json`
 - `*.<output_format>`（convert）
 - `batch_report.json`、`batch_report.md`、`batch_report.csv`
+
+使用 `report_prefix` 可以避免覆盖已有报告文件。
 
 ### 6. 文档对比
 

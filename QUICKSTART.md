@@ -115,6 +115,9 @@ python -m AIDocGenius.cli convert "README.md" "README.html"
 
 # 预热小模型
 python -m AIDocGenius.cli model warmup --model-name "google/flan-t5-small"
+
+# 仅输出报告
+python -m AIDocGenius.cli batch "input" "output" --operations summarize,analyze --report --report-only
 ```
 
 ### 方式五：REST API
@@ -131,6 +134,10 @@ GET  /health
 ```
 
 JSON 端点统一返回 `status/data/error/request_id` 结构。
+
+`/batch` 配合 `zip_output=false` 会直接返回报告结构。
+
+使用 `report_prefix` 可以避免覆盖已有报告文件。
 
 `/batch` 支持 `zip_output=true` 下载压缩包，`report=true` 生成报告文件。
 

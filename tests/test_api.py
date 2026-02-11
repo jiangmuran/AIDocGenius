@@ -76,6 +76,7 @@ class TestAPI(unittest.TestCase):
         body = response.json()
         self.assertEqual(body.get("status"), "ok")
         self.assertIsInstance(body.get("data"), dict)
+        self.assertIn("files", body.get("data", {}))
 
 
 if __name__ == '__main__':
