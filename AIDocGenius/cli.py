@@ -180,6 +180,8 @@ def batch_command(args: argparse.Namespace) -> Optional[str]:
     processor = _load_processor(args.config)
     operations = _parse_list(args.operations) or []
     report_formats = _parse_list(args.report_formats)
+    if args.report_only and not args.report:
+        args.report = True
     result = processor.batch_process(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
