@@ -1,21 +1,29 @@
-# AIDocGenius 快速上手指南 🚀
+# AIDocGenius 快速上手指南
 
 欢迎使用 AIDocGenius！这份指南将帮助你在 5 分钟内开始使用。
 
-## 📋 系统要求
+## 系统要求
 
 - Python 3.8 或更高版本
 - Windows / macOS / Linux 操作系统
 - 网络连接（用于翻译功能与可选模型下载）
 
-## 🧩 可选依赖
+## 可选依赖
 
 - `transformers` + `torch`: 小模型摘要（首次使用会自动下载模型）
 - `PyPDF2`: PDF 文本提取
 - `pyyaml`: YAML 读写
 - `markdown`: 更高质量的 Markdown → HTML
 
-## 🔧 快速安装
+## 快速安装
+
+### 一行命令开箱即用
+
+```bash
+pip install -r requirements.txt && python app.py
+```
+
+访问 http://localhost:8000
 
 ### 方法一：使用安装脚本（推荐 - Windows）
 
@@ -31,7 +39,7 @@ cd AIDocGenius
 pip install -r requirements.txt
 ```
 
-## 🎯 立即开始
+## 立即开始
 
 ### 方式一：运行示例程序
 
@@ -121,9 +129,9 @@ GET  /health
 
 `/batch` 支持 `zip_output=true` 下载压缩包，`report=true` 生成报告文件。
 
-## 🎨 主要功能
+## 主要功能
 
-### 1️⃣ 智能摘要生成
+### 1. 智能摘要生成
 
 自动提取文档核心内容，生成简洁摘要：
 
@@ -147,7 +155,7 @@ processor = DocProcessor(config={
 summary = processor.generate_summary("long_article.txt", max_length=150)
 ```
 
-### 2️⃣ 多语言翻译
+### 2. 多语言翻译
 
 支持中英日韩等多种语言互译：
 
@@ -177,7 +185,7 @@ translation = processor.translate(
 - 西班牙语 (es)
 - 等 40+ 种语言
 
-### 3️⃣ 文档分析
+### 3. 文档分析
 
 全面分析文档质量和结构：
 
@@ -195,7 +203,7 @@ for keyword in analysis['keywords']:
     print(f"{keyword['word']}: {keyword['frequency']} 次")
 ```
 
-### 4️⃣ 格式转换
+### 4. 格式转换
 
 轻松转换文档格式：
 
@@ -212,7 +220,7 @@ processor.convert("data.md", "data.json")
 
 支持格式：TXT、Markdown、HTML、DOCX、JSON、YAML
 
-### 5️⃣ 批量处理
+### 5. 批量处理
 
 一次处理多个文档：
 
@@ -225,27 +233,27 @@ results = processor.batch_process(
 )
 ```
 
-## 📁 支持的文档格式
+## 支持的文档格式
 
 ### 输入格式
-- 📄 纯文本 (.txt)
-- 📝 Markdown (.md)
-- 📑 Word 文档 (.docx)
-- 📋 PDF (.pdf)
-- 🔤 JSON (.json)
-- 📊 YAML (.yaml, .yml)
+- 纯文本 (.txt)
+- Markdown (.md)
+- Word 文档 (.docx)
+- PDF (.pdf)
+- JSON (.json)
+- YAML (.yaml, .yml)
 
 提示：PDF/YAML 需要对应依赖可用（`PyPDF2`/`pyyaml`）。
 
 ### 输出格式
-- 📄 TXT
-- 📝 Markdown
-- 🌐 HTML
-- 📑 Word (DOCX)
-- 🔤 JSON
-- 📊 YAML
+- TXT
+- Markdown
+- HTML
+- Word (DOCX)
+- JSON
+- YAML
 
-## 🧪 快速测试
+## 快速测试
 
 运行内置测试验证安装：
 
@@ -263,7 +271,7 @@ python test_basic.py
 ==================================================
 ```
 
-## 💡 实用技巧
+## 实用技巧
 
 ### 处理长文档
 
@@ -315,7 +323,7 @@ with open("analysis_report.json", "w", encoding="utf-8") as f:
     json.dump(analysis, f, ensure_ascii=False, indent=2)
 ```
 
-## ❓ 常见问题
+## 常见问题
 
 ### Q: 翻译功能无法使用？
 
@@ -339,13 +347,13 @@ A: 是的！AIDocGenius 支持读取 PDF 文件。使用方式与其他格式相
 processor.generate_summary("document.pdf")
 ```
 
-## 🔗 相关资源
+## 相关资源
 
 - 📖 [完整使用说明](使用说明.md)
 - 💻 [GitHub 仓库](https://github.com/jiangmuran/AIDocGenius)
 - 📧 [联系我们](mailto:jmr@jiangmuran.com)
 
-## 🎉 下一步
+## 下一步
 
 1. ✅ 尝试运行示例程序
 2. ✅ 使用你自己的文档进行测试
