@@ -122,7 +122,9 @@ class TestDocProcessor(unittest.TestCase):
             output_dir=str(output_dir),
             operations=["summarize", "analyze", "convert"],
             max_length=50,
-            output_format="md"
+            output_format="md",
+            report=True,
+            report_formats=["json", "md"]
         )
 
         self.assertIsInstance(results, dict)
@@ -133,6 +135,8 @@ class TestDocProcessor(unittest.TestCase):
         self.assertTrue(summary_out.exists())
         self.assertTrue(analysis_out.exists())
         self.assertTrue(convert_out.exists())
+        self.assertTrue((output_dir / "batch_report.json").exists())
+        self.assertTrue((output_dir / "batch_report.md").exists())
     
     def test_custom_config(self):
         """测试自定义配置"""

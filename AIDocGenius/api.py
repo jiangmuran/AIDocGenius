@@ -5,8 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import tempfile
 import uvicorn
-from typing import Optional
+from typing import Optional, List
 from starlette.background import BackgroundTask
+import shutil
+import zipfile
 
 from .processor import DocProcessor
 from .utils import logger
@@ -38,6 +40,28 @@ def _cleanup_files(*paths: str) -> None:
             Path(path).unlink()
         except FileNotFoundError:
             continue
+
+def _cleanup_dirs(*paths: str) -> None:
+    for path in paths:
+        try:
+            shutil.rmtree(path)
+        except FileNotFoundError:
+            continue
+
+def _parse_list(value: Optional[str]) -> List[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+async def _save_upload_files(files: List[UploadFile], target_dir: Path) -> List[Path]:
+    saved_paths = []
+    for upload in files:
+        suffix = Path(upload.filename).suffix
+        file_path = target_dir / f"{Path(upload.filename).stem}{suffix}"
+        content = await upload.read()
+        file_path.write_bytes(content)
+        saved_paths.append(file_path)
+    return saved_paths
 
 @app.get("/health")
 async def health_check():
@@ -126,6 +150,132 @@ async def analyze_document(file: UploadFile = File(...)):
 
     except Exception as e:
         logger.error(f"Analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/compare")
+async def compare_documents(
+    file1: UploadFile = File(...),
+    file2: UploadFile = File(...)
+):
+    """
+    比较两个文档
+    """
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file1.filename).suffix) as temp_file1:
+            temp_file1.write(await file1.read())
+            path1 = temp_file1.name
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file2.filename).suffix) as temp_file2:
+            temp_file2.write(await file2.read())
+            path2 = temp_file2.name
+
+        result = processor.compare_documents(path1, path2)
+        _cleanup_files(path1, path2)
+        return JSONResponse(content=result)
+
+    except Exception as e:
+        logger.error(f"Comparison error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/merge")
+async def merge_documents(
+    files: List[UploadFile] = File(...),
+    output_format: str = Query(default="txt"),
+    smart_merge: bool = Query(default=False)
+):
+    """
+    合并多个文档
+    """
+    input_dir = None
+    output_path = None
+    try:
+        input_dir = tempfile.mkdtemp()
+        input_path = Path(input_dir)
+        saved_files = await _save_upload_files(files, input_path)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{output_format}") as temp_output:
+            output_path = temp_output.name
+
+        processor.merge_documents([str(p) for p in saved_files], output_path, smart_merge=smart_merge)
+
+        output_name = f"merged.{output_format}"
+        return FileResponse(
+            output_path,
+            filename=output_name,
+            media_type="application/octet-stream",
+            background=BackgroundTask(_cleanup_dirs, input_dir)
+        )
+
+    except Exception as e:
+        if input_dir:
+            _cleanup_dirs(input_dir)
+        if output_path:
+            _cleanup_files(output_path)
+        logger.error(f"Merge error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/batch")
+async def batch_process(
+    files: List[UploadFile] = File(...),
+    operations: str = Query(..., description="Comma-separated operations"),
+    output_format: Optional[str] = Query(default=None),
+    target_language: Optional[str] = Query(default=None),
+    source_language: Optional[str] = Query(default=None),
+    report: bool = Query(default=True),
+    report_formats: Optional[str] = Query(default="json"),
+    zip_output: bool = Query(default=True)
+):
+    """
+    批量处理文档
+    """
+    input_dir = None
+    output_dir = None
+    zip_path = None
+    try:
+        input_dir = tempfile.mkdtemp()
+        output_dir = tempfile.mkdtemp()
+        input_path = Path(input_dir)
+        output_path = Path(output_dir)
+
+        await _save_upload_files(files, input_path)
+        ops = _parse_list(operations)
+        report_format_list = _parse_list(report_formats)
+
+        results = processor.batch_process(
+            input_dir=input_path,
+            output_dir=output_path,
+            operations=ops,
+            output_format=output_format,
+            target_language=target_language,
+            source_language=source_language,
+            report=report,
+            report_formats=report_format_list
+        )
+
+        if not zip_output:
+            return JSONResponse(content=results)
+
+        zip_path = Path(output_dir) / "batch_results.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for file in output_path.rglob("*"):
+                if file.is_file():
+                    zipf.write(file, arcname=file.relative_to(output_path))
+
+        return FileResponse(
+            zip_path,
+            filename="batch_results.zip",
+            media_type="application/zip",
+            background=BackgroundTask(_cleanup_dirs, input_dir, output_dir)
+        )
+
+    except Exception as e:
+        if input_dir:
+            _cleanup_dirs(input_dir)
+        if output_dir:
+            _cleanup_dirs(output_dir)
+        if zip_path:
+            _cleanup_files(str(zip_path))
+        logger.error(f"Batch error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/convert")

@@ -106,6 +106,21 @@ python -m AIDocGenius.cli analyze "your_document.txt" --output analysis.json
 python -m AIDocGenius.cli convert "README.md" "README.html"
 ```
 
+### 方式五：REST API
+
+```
+POST /summarize
+POST /translate
+POST /analyze
+POST /convert
+POST /compare
+POST /merge
+POST /batch
+GET  /health
+```
+
+`/batch` 支持 `zip_output=true` 下载压缩包，`report=true` 生成报告文件。
+
 ## 🎨 主要功能
 
 ### 1️⃣ 智能摘要生成

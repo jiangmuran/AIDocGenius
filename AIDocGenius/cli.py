@@ -95,6 +95,8 @@ def create_parser() -> argparse.ArgumentParser:
     batch_parser.add_argument("--target-language", help="目标语言")
     batch_parser.add_argument("--source-language", help="源语言")
     batch_parser.add_argument("--output-format", help="转换输出格式")
+    batch_parser.add_argument("--report", action="store_true", help="生成批处理报告")
+    batch_parser.add_argument("--report-formats", help="报告格式，逗号分隔（json,md）")
 
     return parser
 
@@ -168,6 +170,7 @@ def merge_command(args: argparse.Namespace) -> Optional[str]:
 def batch_command(args: argparse.Namespace) -> Optional[str]:
     processor = _load_processor(args.config)
     operations = _parse_list(args.operations) or []
+    report_formats = _parse_list(args.report_formats)
     result = processor.batch_process(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
@@ -176,7 +179,9 @@ def batch_command(args: argparse.Namespace) -> Optional[str]:
         min_length=args.min_length,
         target_language=args.target_language,
         source_language=args.source_language,
-        output_format=args.output_format
+        output_format=args.output_format,
+        report=args.report,
+        report_formats=report_formats
     )
     return str(result)
 

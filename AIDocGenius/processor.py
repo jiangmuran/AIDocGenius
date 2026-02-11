@@ -264,6 +264,8 @@ class DocProcessor:
                      input_dir: Union[str, Path],
                      output_dir: Union[str, Path],
                      operations: List[str],
+                     report: bool = False,
+                     report_formats: Optional[List[str]] = None,
                      **kwargs) -> dict:
         """
         批量处理文档
@@ -284,6 +286,10 @@ class DocProcessor:
 
         output_path_resolved = output_path.resolve()
         
+        total_files = 0
+        processed_files = 0
+        error_count = 0
+
         for file in input_path.glob("**/*"):
             if not file.is_file():
                 continue
@@ -293,6 +299,7 @@ class DocProcessor:
             except Exception:
                 pass
 
+            total_files += 1
             results[str(file)] = {}
             for operation in operations:
                 try:
@@ -330,7 +337,51 @@ class DocProcessor:
                         results[str(file)][operation] = "Error: Unsupported operation"
                 except Exception as e:
                     results[str(file)][operation] = f"Error: {str(e)}"
+                    error_count += 1
+
+            processed_files += 1
                         
+        if report:
+            if report_formats is None:
+                report_formats = ["json"]
+
+            summary_report = {
+                "input_dir": str(input_path),
+                "output_dir": str(output_path),
+                "operations": operations,
+                "total_files": total_files,
+                "processed_files": processed_files,
+                "error_count": error_count,
+                "results": results
+            }
+
+            if "json" in report_formats:
+                report_path = output_path / "batch_report.json"
+                save_document(summary_report, report_path)
+
+            if "md" in report_formats:
+                report_lines = [
+                    "# Batch Processing Report",
+                    "",
+                    f"- Input: {input_path}",
+                    f"- Output: {output_path}",
+                    f"- Operations: {', '.join(operations)}",
+                    f"- Total files: {total_files}",
+                    f"- Processed files: {processed_files}",
+                    f"- Errors: {error_count}",
+                    "",
+                    "## Results",
+                ]
+                for file_path, result in results.items():
+                    report_lines.append(f"- {file_path}")
+                    for key, value in result.items():
+                        if key.endswith("_output"):
+                            report_lines.append(f"  - {key}: {value}")
+                        elif isinstance(value, str) and value.startswith("Error:"):
+                            report_lines.append(f"  - {key}: {value}")
+                report_path = output_path / "batch_report.md"
+                save_document("\n".join(report_lines), report_path)
+
         return results
     
     def compare_documents(

@@ -179,6 +179,19 @@ python -m AIDocGenius.cli analyze "document.txt" --output analysis.json
 python -m AIDocGenius.cli convert "README.md" "README.html"
 ```
 
+#### Method 5: REST API
+
+```
+POST /summarize
+POST /translate
+POST /analyze
+POST /convert
+POST /compare
+POST /merge
+POST /batch
+GET  /health
+```
+
 ## 📊 Test Results
 
 The project has passed complete testing, all core features work properly:
@@ -289,6 +302,8 @@ Batch processing writes outputs into `output_dir` with standardized filenames:
 - `*.translated.<lang>.txt`
 - `*.analysis.json`
 - `*.<output_format>` (for convert)
+
+Enable batch reports with `report=True` to write `batch_report.json` and `batch_report.md`.
 
 ### 6. Compare Documents (NEW!)
 
