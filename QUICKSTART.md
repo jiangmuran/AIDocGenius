@@ -141,6 +141,8 @@ JSON 端点统一返回 `status/data/error/request_id` 结构。
 
 可通过 `MAX_UPLOAD_SIZE` 调整上传大小上限（字节，默认 20971520）。
 
+如需限制跨域来源，设置 `CORS_ORIGINS`（逗号分隔，默认 `*`）。
+
 `/batch` 支持 `zip_output=true` 下载压缩包，`report=true` 生成报告文件。
 
 ## 主要功能

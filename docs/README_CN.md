@@ -478,6 +478,7 @@ analysis:
 
 - `MODEL_CACHE_DIR`: HuggingFace 模型缓存目录
 - `MAX_UPLOAD_SIZE`: 上传大小上限（字节，默认 20971520）
+- `CORS_ORIGINS`: 允许的来源列表（逗号分隔，默认 `*`）
 
 ## 相关链接
 

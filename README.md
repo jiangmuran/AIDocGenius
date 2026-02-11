@@ -502,6 +502,7 @@ Environment variables:
 
 - `MODEL_CACHE_DIR`: HuggingFace model cache directory
 - `MAX_UPLOAD_SIZE`: max upload size in bytes (default 20971520)
+- `CORS_ORIGINS`: comma-separated origins (default `*`)
 
 ## Links
 

@@ -22,10 +22,14 @@ app = FastAPI(
 )
 
 # 配置CORS
+cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+allow_credentials = "*" not in cors_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
