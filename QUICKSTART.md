@@ -6,7 +6,14 @@
 
 - Python 3.8 或更高版本
 - Windows / macOS / Linux 操作系统
-- 网络连接（用于翻译功能）
+- 网络连接（用于翻译功能与可选模型下载）
+
+## 🧩 可选依赖
+
+- `transformers` + `torch`: 小模型摘要（首次使用会自动下载模型）
+- `PyPDF2`: PDF 文本提取
+- `pyyaml`: YAML 读写
+- `markdown`: 更高质量的 Markdown → HTML
 
 ## 🔧 快速安装
 
@@ -100,6 +107,18 @@ summary = processor.generate_summary(
 )
 ```
 
+小模型摘要（可选，需要安装 `transformers` 与 `torch`）：
+
+```python
+processor = DocProcessor(config={
+    "summarizer": {
+        "use_small_model": True,
+        "model_name": "google/flan-t5-small"
+    }
+})
+summary = processor.generate_summary("long_article.txt", max_length=150)
+```
+
 ### 2️⃣ 多语言翻译
 
 支持中英日韩等多种语言互译：
@@ -120,7 +139,7 @@ translation = processor.translate(
 )
 ```
 
-支持的语言：
+支持的语言（Google Translate 可用时）：
 - 中文 (zh)
 - 英语 (en)
 - 日语 (ja)
@@ -187,6 +206,8 @@ results = processor.batch_process(
 - 📋 PDF (.pdf)
 - 🔤 JSON (.json)
 - 📊 YAML (.yaml, .yml)
+
+提示：PDF/YAML 需要对应依赖可用（`PyPDF2`/`pyyaml`）。
 
 ### 输出格式
 - 📄 TXT

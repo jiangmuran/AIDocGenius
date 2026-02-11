@@ -15,8 +15,8 @@ English | [简体中文](docs/README_CN.md)
 
 ### ✅ Verified Features
 
-- 📝 **Smart Document Summarization** - Auto-extract core content, generate concise summaries (< 1 second)
-- 🌐 **Multilingual Translation** - Support 40+ languages, powered by Google Translate
+- 📝 **Smart Document Summarization** - Simple mode by default, optional small-model summaries
+- 🌐 **Multilingual Translation** - Google Translate when available, model fallback for limited pairs
 - 📊 **Document Quality Analysis** - Readability scoring, keyword extraction, structure analysis
 - 🔄 **Multi-format Conversion** - Support TXT, MD, HTML, DOCX, JSON, YAML
 - 📦 **Batch Processing** - Process multiple documents at once, auto-generate reports
@@ -26,7 +26,7 @@ English | [简体中文](docs/README_CN.md)
 
 - 🔍 **Document Comparison** - Compare similarity and differences between documents
 - 🔗 **Document Merging** - Merge multiple documents with smart duplicate removal
-- 🧪 **Complete Test Suite** - 46+ unit tests ensuring quality and reliability
+- 🧪 **Complete Test Suite** - 50+ unit tests ensuring quality and reliability
 
 ### 🎨 Supported Formats
 
@@ -80,7 +80,14 @@ python demo.py
 ### Requirements
 
 - Python 3.8+
-- Internet connection (for translation feature)
+- Internet connection (for translation feature and optional model download)
+
+### Optional Dependencies
+
+- `transformers` + `torch`: small-model summarization (downloads on first use)
+- `PyPDF2`: PDF text extraction
+- `pyyaml`: YAML read/write
+- `markdown`: higher-quality Markdown → HTML (fallback renderer available)
 
 ### Quick Installation (3 Steps)
 
@@ -262,6 +269,13 @@ results = processor.batch_process(
     max_length=200
 )
 ```
+
+Batch processing writes outputs into `output_dir` with standardized filenames:
+
+- `*.summary.txt`
+- `*.translated.<lang>.txt`
+- `*.analysis.json`
+- `*.<output_format>` (for convert)
 
 ### 6. Compare Documents (NEW!)
 
