@@ -288,6 +288,11 @@ class DocProcessor:
         output_path.mkdir(parents=True, exist_ok=True)
 
         output_path_resolved = output_path.resolve()
+
+        if report_prefix:
+            report_prefix = Path(report_prefix).name
+            if not report_prefix:
+                report_prefix = None
         
         import time
 
@@ -349,7 +354,13 @@ class DocProcessor:
                         output_format = kwargs.get("output_format")
                         if not output_format:
                             raise DocumentProcessError("convert 操作需要提供 output_format")
-                        output_file = target_dir / f"{file.stem}.{output_format.lstrip('.')}"
+                        normalized_format = output_format.lower().lstrip('.')
+                        if any(sep in normalized_format for sep in ["/", "\\"]):
+                            raise DocumentProcessError("convert 输出格式无效")
+                        normalized_format = f".{normalized_format}"
+                        if normalized_format not in self.converter.supported_formats:
+                            raise DocumentProcessError(f"convert 不支持的输出格式: {normalized_format}")
+                        output_file = target_dir / f"{file.stem}{normalized_format}"
                         self.convert(file, output_file)
                         results[str(file)]["converted_output"] = str(output_file)
                         file_entry["outputs"]["convert"] = str(output_file)
