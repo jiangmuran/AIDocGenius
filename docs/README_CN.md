@@ -477,6 +477,7 @@ analysis:
 环境变量：
 
 - `MODEL_CACHE_DIR`: HuggingFace 模型缓存目录
+- `MAX_UPLOAD_SIZE`: 上传大小上限（字节，默认 20971520）
 
 ## 相关链接
 

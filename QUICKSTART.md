@@ -139,6 +139,8 @@ JSON 端点统一返回 `status/data/error/request_id` 结构。
 
 使用 `report_prefix` 可以避免覆盖已有报告文件。
 
+可通过 `MAX_UPLOAD_SIZE` 调整上传大小上限（字节，默认 20971520）。
+
 `/batch` 支持 `zip_output=true` 下载压缩包，`report=true` 生成报告文件。
 
 ## 主要功能

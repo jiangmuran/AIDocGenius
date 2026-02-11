@@ -10,6 +10,7 @@ from starlette.background import BackgroundTask
 import shutil
 import zipfile
 import uuid
+import os
 
 from .processor import DocProcessor
 from .utils import logger
@@ -34,6 +35,8 @@ static_path = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 processor = DocProcessor()
+MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", str(20 * 1024 * 1024)))
+UPLOAD_CHUNK_SIZE = 1024 * 1024
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
@@ -92,10 +95,31 @@ async def _save_upload_files(files: List[UploadFile], target_dir: Path) -> List[
     for upload in files:
         suffix = Path(upload.filename).suffix
         file_path = target_dir / f"{Path(upload.filename).stem}{suffix}"
-        content = await upload.read()
-        file_path.write_bytes(content)
+        total = 0
+        with open(file_path, "wb") as f:
+            while True:
+                chunk = await upload.read(UPLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_UPLOAD_SIZE:
+                    raise ValueError("Uploaded file exceeds size limit")
+                f.write(chunk)
         saved_paths.append(file_path)
     return saved_paths
+
+async def _read_upload_file(upload: UploadFile) -> bytes:
+    total = 0
+    chunks = []
+    while True:
+        chunk = await upload.read(UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_UPLOAD_SIZE:
+            raise ValueError("Uploaded file exceeds size limit")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 @app.get("/health")
 async def health_check(request: Request):
@@ -123,7 +147,7 @@ async def summarize_document(
     """
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
-            content = await file.read()
+            content = await _read_upload_file(file)
             temp_file.write(content)
             temp_path = temp_file.name
 
@@ -136,6 +160,9 @@ async def summarize_document(
         Path(temp_path).unlink()
         return _success({"summary": summary}, request.state.request_id)
 
+    except ValueError as e:
+        logger.error(f"Summarization error: {str(e)}")
+        return _error("INVALID_INPUT", str(e), request.state.request_id, status_code=413)
     except ImportError as e:
         logger.error(f"Summarization error: {str(e)}")
         return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
@@ -155,7 +182,7 @@ async def translate_document(
     """
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
-            content = await file.read()
+            content = await _read_upload_file(file)
             temp_file.write(content)
             temp_path = temp_file.name
 
@@ -168,6 +195,9 @@ async def translate_document(
         Path(temp_path).unlink()
         return _success({"translation": translation}, request.state.request_id)
 
+    except ValueError as e:
+        logger.error(f"Translation error: {str(e)}")
+        return _error("INVALID_INPUT", str(e), request.state.request_id, status_code=413)
     except ImportError as e:
         logger.error(f"Translation error: {str(e)}")
         return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
@@ -182,7 +212,7 @@ async def analyze_document(request: Request, file: UploadFile = File(...)):
     """
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
-            content = await file.read()
+            content = await _read_upload_file(file)
             temp_file.write(content)
             temp_path = temp_file.name
 
@@ -190,6 +220,9 @@ async def analyze_document(request: Request, file: UploadFile = File(...)):
         Path(temp_path).unlink()
         return _success(analysis, request.state.request_id)
 
+    except ValueError as e:
+        logger.error(f"Analysis error: {str(e)}")
+        return _error("INVALID_INPUT", str(e), request.state.request_id, status_code=413)
     except ImportError as e:
         logger.error(f"Analysis error: {str(e)}")
         return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
@@ -208,17 +241,20 @@ async def compare_documents(
     """
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file1.filename).suffix) as temp_file1:
-            temp_file1.write(await file1.read())
+            temp_file1.write(await _read_upload_file(file1))
             path1 = temp_file1.name
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file2.filename).suffix) as temp_file2:
-            temp_file2.write(await file2.read())
+            temp_file2.write(await _read_upload_file(file2))
             path2 = temp_file2.name
 
         result = processor.compare_documents(path1, path2)
         _cleanup_files(path1, path2)
         return _success(result, request.state.request_id)
 
+    except ValueError as e:
+        logger.error(f"Comparison error: {str(e)}")
+        return _error("INVALID_INPUT", str(e), request.state.request_id, status_code=413)
     except ImportError as e:
         logger.error(f"Comparison error: {str(e)}")
         return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
@@ -256,6 +292,13 @@ async def merge_documents(
             background=BackgroundTask(_cleanup_dirs, input_dir)
         )
 
+    except ValueError as e:
+        if input_dir:
+            _cleanup_dirs(input_dir)
+        if output_path:
+            _cleanup_files(output_path)
+        logger.error(f"Merge error: {str(e)}")
+        return _error("INVALID_INPUT", str(e), request.state.request_id, status_code=413)
     except ImportError as e:
         if input_dir:
             _cleanup_dirs(input_dir)
@@ -332,6 +375,15 @@ async def batch_process(
             background=BackgroundTask(_cleanup_dirs, input_dir, output_dir)
         )
 
+    except ValueError as e:
+        if input_dir:
+            _cleanup_dirs(input_dir)
+        if output_dir:
+            _cleanup_dirs(output_dir)
+        if zip_path:
+            _cleanup_files(str(zip_path))
+        logger.error(f"Batch error: {str(e)}")
+        return _error("INVALID_INPUT", str(e), request.state.request_id, status_code=413)
     except ImportError as e:
         if input_dir:
             _cleanup_dirs(input_dir)
@@ -364,7 +416,7 @@ async def convert_document(
     output_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_input:
-            content = await file.read()
+            content = await _read_upload_file(file)
             temp_input.write(content)
             input_path = temp_input.name
 
@@ -381,6 +433,13 @@ async def convert_document(
             background=BackgroundTask(_cleanup_files, input_path, output_path)
         )
 
+    except ValueError as e:
+        if input_path:
+            _cleanup_files(input_path)
+        if output_path:
+            _cleanup_files(output_path)
+        logger.error(f"Conversion error: {str(e)}")
+        return _error("INVALID_INPUT", str(e), request.state.request_id, status_code=413)
     except ImportError as e:
         if input_path:
             _cleanup_files(input_path)
