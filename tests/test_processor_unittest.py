@@ -67,6 +67,21 @@ class TestDocProcessor(unittest.TestCase):
         self.processor.convert(self.test_file, output_file)
         
         self.assertTrue(output_file.exists())
+
+    def test_process_document_text(self):
+        """测试 process_document 文本"""
+        result = self.processor.process_document(self.test_file)
+        self.assertEqual(result.get("format"), "text")
+        self.assertIn("content", result)
+        self.assertIn("info", result)
+
+    def test_process_document_structured(self):
+        """测试 process_document 结构化文件"""
+        data_file = self.temp_path / "data.json"
+        data_file.write_text('{"a": 1, "b": 2}', encoding='utf-8')
+        result = self.processor.process_document(data_file)
+        self.assertEqual(result.get("format"), "structured")
+        self.assertIsInstance(result.get("content"), dict)
     
     def test_compare_documents(self):
         """测试文档比较"""
@@ -98,6 +113,26 @@ class TestDocProcessor(unittest.TestCase):
         content = output_file.read_text(encoding='utf-8')
         self.assertIn("文档1的内容", content)
         self.assertIn("文档2的内容", content)
+
+    def test_batch_process_outputs(self):
+        """测试批量处理输出文件"""
+        output_dir = self.temp_path / "outputs"
+        results = self.processor.batch_process(
+            input_dir=str(self.temp_path),
+            output_dir=str(output_dir),
+            operations=["summarize", "analyze", "convert"],
+            max_length=50,
+            output_format="md"
+        )
+
+        self.assertIsInstance(results, dict)
+        file_results = results.get(str(self.test_file), {})
+        summary_out = Path(file_results.get("summary_output", ""))
+        analysis_out = Path(file_results.get("analysis_output", ""))
+        convert_out = Path(file_results.get("converted_output", ""))
+        self.assertTrue(summary_out.exists())
+        self.assertTrue(analysis_out.exists())
+        self.assertTrue(convert_out.exists())
     
     def test_custom_config(self):
         """测试自定义配置"""

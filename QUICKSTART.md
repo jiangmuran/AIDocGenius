@@ -93,6 +93,19 @@ print(analysis)
 processor.convert("input.txt", "output.docx")
 ```
 
+### 方式四：CLI（脚本友好）
+
+```bash
+# 生成摘要
+python -m AIDocGenius.cli summary "your_document.txt" --max-length 200
+
+# 分析文档
+python -m AIDocGenius.cli analyze "your_document.txt" --output analysis.json
+
+# 格式转换
+python -m AIDocGenius.cli convert "README.md" "README.html"
+```
+
 ## 🎨 主要功能
 
 ### 1️⃣ 智能摘要生成

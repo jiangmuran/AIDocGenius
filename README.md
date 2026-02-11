@@ -166,6 +166,19 @@ python examples/示例2_文档翻译.py
 python examples/示例3_文档分析.py
 ```
 
+#### Method 4: CLI (Automation Friendly)
+
+```bash
+# Summarize
+python -m AIDocGenius.cli summary "document.txt" --max-length 200
+
+# Analyze
+python -m AIDocGenius.cli analyze "document.txt" --output analysis.json
+
+# Convert
+python -m AIDocGenius.cli convert "README.md" "README.html"
+```
+
 ## 📊 Test Results
 
 The project has passed complete testing, all core features work properly:

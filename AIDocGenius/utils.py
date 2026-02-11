@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Union, Any
+from typing import Union, Any, Optional, Dict
 import json
 try:
     import yaml
@@ -38,7 +38,7 @@ def load_document(file_path: Union[str, Path]) -> Any:
     suffix = file_path.suffix.lower()
     
     try:
-        if suffix == '.txt':
+        if suffix in ['.txt', '.rst']:
             with open(file_path, 'r', encoding='utf-8') as f:
                 return f.read()
                 
@@ -85,7 +85,7 @@ def save_document(content: Any, file_path: Union[str, Path], format_options: dic
     suffix = file_path.suffix.lower()
     
     try:
-        if suffix == '.txt':
+        if suffix in ['.txt', '.rst']:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(str(content))
                 
@@ -187,3 +187,27 @@ def ensure_text(content: Any) -> str:
     if isinstance(content, (dict, list)):
         return json.dumps(content, ensure_ascii=False, indent=2)
     return str(content)
+
+def load_config(config_path: Optional[Union[str, Path]]) -> Dict[str, Any]:
+    """
+    加载配置文件（JSON/YAML）
+    """
+    if not config_path:
+        return {}
+
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found: {path}")
+
+    suffix = path.suffix.lower()
+    if suffix == '.json':
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+    if suffix in ['.yaml', '.yml']:
+        if not YAML_AVAILABLE:
+            raise ImportError("pyyaml is required to read YAML config files")
+        with open(path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f) or {}
+
+    raise ValueError(f"Unsupported config format: {suffix}")

@@ -170,7 +170,8 @@ class DocProcessor:
     def generate_summary(self, 
                         document_path: Union[str, Path],
                         max_length: Optional[int] = None,
-                        min_length: Optional[int] = None) -> str:
+                        min_length: Optional[int] = None,
+                        ratio: Optional[float] = None) -> str:
         """
         生成文档摘要
         
@@ -186,7 +187,8 @@ class DocProcessor:
         return self.summarizer.generate_summary(
             ensure_text(content),
             max_length=max_length,
-            min_length=min_length
+            min_length=min_length,
+            ratio=ratio
         )
 
     def translate(self,
