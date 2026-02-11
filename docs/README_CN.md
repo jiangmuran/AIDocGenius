@@ -24,10 +24,10 @@
 
 ## 🎯 核心功能
 
-- 📝 智能文档摘要 - 1秒内完成
+- 📝 智能文档摘要 - 默认使用轻量摘要算法
 - 🌐 多语言翻译 - 支持 40+ 种语言
 - 📊 文档质量分析 - 可读性评分、关键词提取
-- 🔄 多格式转换 - TXT, MD, HTML, DOCX, PDF, JSON, YAML
+- 🔄 多格式转换 - TXT, MD, HTML, DOCX, JSON, YAML
 - 📦 批量处理 - 自动生成报告
 
 ## 🚀 快速开始
@@ -43,6 +43,21 @@
 ```bash
 pip install -r requirements.txt
 python app.py
+```
+
+### 使用小模型摘要（可选，需要安装 transformers 和 torch）
+
+```python
+from AIDocGenius import DocProcessor
+
+processor = DocProcessor(config={
+    "summarizer": {
+        "use_small_model": True,
+        "model_name": "google/flan-t5-small"
+    }
+})
+
+summary = processor.generate_summary("article.txt", max_length=200)
 ```
 
 ## 📞 联系方式

@@ -23,7 +23,9 @@ class Summarizer:
         device: Optional[str] = None,
         max_length: int = 1024,
         min_length: int = 50,
-        use_simple: bool = True
+        use_simple: bool = True,
+        use_small_model: bool = False,
+        max_input_length: Optional[int] = None
     ):
         """
         初始化摘要生成器
@@ -35,11 +37,22 @@ class Summarizer:
             min_length: 最小输出长度
             use_simple: 是否使用简单摘要算法（无需模型）
         """
+        if use_small_model:
+            use_simple = False
+            if not model_name:
+                model_name = "google/flan-t5-small"
+
         self.use_simple = use_simple or not TRANSFORMERS_AVAILABLE
         self.device = device or ("cuda" if torch and torch.cuda.is_available() else "cpu")
         self.max_length = max_length
         self.min_length = min_length
         self.model_name = model_name or "IDEA-CCNL/Randeng-Pegasus-238M-Summary-Chinese"
+        if max_input_length is None:
+            if "t5" in self.model_name.lower():
+                max_input_length = 512
+            else:
+                max_input_length = 1024
+        self.max_input_length = max_input_length
         
         if not self.use_simple and TRANSFORMERS_AVAILABLE:
             try:
@@ -55,6 +68,7 @@ class Summarizer:
         text: str,
         max_length: Optional[int] = None,
         min_length: Optional[int] = None,
+        ratio: Optional[float] = None,
         num_beams: int = 4,
         length_penalty: float = 2.0,
         no_repeat_ngram_size: int = 3
@@ -73,6 +87,14 @@ class Summarizer:
         Returns:
             str: 生成的摘要
         """
+        if ratio is not None:
+            ratio = max(0.0, min(1.0, ratio))
+            ratio_length = int(len(text) * ratio)
+            if max_length is None:
+                max_length = ratio_length
+            else:
+                max_length = min(max_length, ratio_length)
+
         if self.use_simple:
             return self._generate_simple_summary(text, max_length, min_length)
         
@@ -81,9 +103,13 @@ class Summarizer:
             
         try:
             # 编码输入
+            prompt = text
+            if "t5" in self.model_name.lower():
+                prompt = f"summarize: {text}"
+
             inputs = self.tokenizer(
-                text,
-                max_length=self.max_length,
+                prompt,
+                max_length=self.max_input_length,
                 truncation=True,
                 return_tensors="pt"
             ).to(self.device)
@@ -116,13 +142,21 @@ class Summarizer:
     ) -> str:
         """使用简单算法生成摘要（提取前N个句子）"""
         import re
-        
-        # 分割句子
-        sentences = re.split(r'[。！？.!?]\s*', text)
+
+        cleaned = text.strip()
+        if not cleaned:
+            return ""
+
+        # 分割句子并保留标点
+        sentences = re.findall(r'[^。！？.!?]+[。！？.!?]?', cleaned)
         sentences = [s.strip() for s in sentences if s.strip()]
-        
+
+        if len(sentences) == 1:
+            if max_length is None or len(cleaned) <= max_length:
+                return cleaned
+
         if not sentences:
-            return text[:max_length or 200] if max_length else text[:200]
+            return cleaned[:max_length or 200] if max_length else cleaned[:200]
         
         # 计算目标句子数
         target_length = max_length or 200
@@ -132,7 +166,7 @@ class Summarizer:
         
         # 选择前N个句子
         summary_sentences = sentences[:target_sentences]
-        summary = '。'.join(summary_sentences)
+        summary = ''.join(summary_sentences)
         
         # 确保满足长度要求
         if max_length and len(summary) > max_length:
@@ -141,7 +175,7 @@ class Summarizer:
             # 如果太短，添加更多句子
             additional = min(3, len(sentences) - target_sentences)
             summary_sentences = sentences[:target_sentences + additional]
-            summary = '。'.join(summary_sentences)
+            summary = ''.join(summary_sentences)
             if max_length and len(summary) > max_length:
                 summary = summary[:max_length]
         

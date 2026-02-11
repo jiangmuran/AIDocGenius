@@ -64,7 +64,7 @@ def translate_command(args: argparse.Namespace) -> Optional[str]:
     """翻译命令"""
     translator = Translator()
     try:
-        source_lang = args.source if args.source != "auto" else "en"
+        source_lang = args.source
         if args.output:
             translator.translate_file(args.input, args.output, source_lang, args.target)
         else:

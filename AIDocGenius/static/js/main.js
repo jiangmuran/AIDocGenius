@@ -84,8 +84,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json();
-            displayResult(data, op);
+            if (op === 'convert') {
+                const blob = await response.blob();
+                const disposition = response.headers.get('Content-Disposition') || '';
+                const match = disposition.match(/filename="?([^";]+)"?/i);
+                const fallbackName = `converted.${document.getElementById('outputFormat').value}`;
+                const fileName = match ? match[1] : fallbackName;
+                displayResult({ blob, fileName }, op);
+            } else {
+                const data = await response.json();
+                displayResult(data, op);
+            }
         } catch (error) {
             resultCard.style.display = 'block';
             resultContent.innerHTML = `<div class="alert alert-danger">错误: ${error.message}</div>`;
@@ -111,7 +120,12 @@ document.addEventListener('DOMContentLoaded', function() {
                        JSON.stringify(data, null, 2) + '</pre></div>';
                 break;
             case 'convert':
-                html = `<div class="alert alert-success"><strong>转换完成</strong><p>${data.converted_content || '转换成功'}</p></div>`;
+                if (data && data.blob) {
+                    const url = URL.createObjectURL(data.blob);
+                    html = `<div class="alert alert-success"><strong>转换完成</strong><p><a href="${url}" download="${data.fileName}">下载文件</a></p></div>`;
+                } else {
+                    html = `<div class="alert alert-success"><strong>转换完成</strong></div>`;
+                }
                 break;
         }
 

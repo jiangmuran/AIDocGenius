@@ -18,7 +18,7 @@ English | [简体中文](docs/README_CN.md)
 - 📝 **Smart Document Summarization** - Auto-extract core content, generate concise summaries (< 1 second)
 - 🌐 **Multilingual Translation** - Support 40+ languages, powered by Google Translate
 - 📊 **Document Quality Analysis** - Readability scoring, keyword extraction, structure analysis
-- 🔄 **Multi-format Conversion** - Support TXT, MD, HTML, DOCX, PDF, JSON, YAML
+- 🔄 **Multi-format Conversion** - Support TXT, MD, HTML, DOCX, JSON, YAML
 - 📦 **Batch Processing** - Process multiple documents at once, auto-generate reports
 - 🌐 **Web Interface** - Beautiful and easy-to-use GUI with drag-and-drop file upload
 
@@ -35,13 +35,13 @@ English | [简体中文](docs/README_CN.md)
 | TXT, Markdown, Word (DOCX) | TXT, Markdown, HTML |
 | PDF, JSON, YAML | Word (DOCX), JSON, YAML |
 
-### 📈 Performance Metrics
+### 📈 Performance Notes
 
-- **Startup Time**: < 5 seconds
-- **Summarization**: < 1 second (simple algorithm)
-- **Analysis**: < 2 seconds
-- **Format Conversion**: < 1 second
-- **Translation**: 1-3 seconds (depends on network)
+- **Startup Time**: depends on environment and dependencies
+- **Summarization**: fast in simple mode; model mode depends on hardware
+- **Analysis**: depends on document length and language
+- **Format Conversion**: fast for text-based formats
+- **Translation**: depends on network and engine availability
 
 ## 🎬 Quick Demo
 
@@ -201,6 +201,21 @@ print(short)
 # Generate detailed summary
 detailed = processor.generate_summary("article.txt", max_length=500)
 print(detailed)
+```
+
+Use a small downloadable model (optional, requires `transformers` and `torch`):
+
+```python
+from AIDocGenius import DocProcessor
+
+processor = DocProcessor(config={
+    "summarizer": {
+        "use_small_model": True,
+        "model_name": "google/flan-t5-small"
+    }
+})
+
+summary = processor.generate_summary("article.txt", max_length=200)
 ```
 
 ### 2. Translate Document

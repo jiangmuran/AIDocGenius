@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,7 +6,7 @@ from pathlib import Path
 import tempfile
 import uvicorn
 from typing import Optional
-from pydantic import BaseModel
+from starlette.background import BackgroundTask
 
 from .processor import DocProcessor
 from .utils import logger
@@ -32,13 +32,12 @@ app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 processor = DocProcessor()
 
-class TranslationRequest(BaseModel):
-    target_language: str
-    source_language: Optional[str] = None
-
-class SummaryRequest(BaseModel):
-    max_length: Optional[int] = None
-    min_length: Optional[int] = None
+def _cleanup_files(*paths: str) -> None:
+    for path in paths:
+        try:
+            Path(path).unlink()
+        except FileNotFoundError:
+            continue
 
 @app.get("/health")
 async def health_check():
@@ -56,8 +55,9 @@ async def read_root():
 
 @app.post("/summarize")
 async def summarize_document(
-    params: Optional[SummaryRequest] = None,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    max_length: Optional[int] = Query(default=None),
+    min_length: Optional[int] = Query(default=None)
 ):
     """
     生成文档摘要
@@ -70,8 +70,8 @@ async def summarize_document(
 
         summary = processor.generate_summary(
             temp_path,
-            max_length=params.max_length if params else None,
-            min_length=params.min_length if params else None
+            max_length=max_length,
+            min_length=min_length
         )
 
         Path(temp_path).unlink()
@@ -85,7 +85,7 @@ async def summarize_document(
 async def translate_document(
     target_language: str,
     file: UploadFile = File(...),
-    source_language: Optional[str] = None
+    source_language: Optional[str] = Query(default=None)
 ):
     """
     翻译文档
@@ -136,24 +136,32 @@ async def convert_document(
     """
     转换文档格式
     """
+    input_path = None
+    output_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_input:
             content = await file.read()
             temp_input.write(content)
             input_path = temp_input.name
 
-        output_path = Path(input_path).with_suffix(f".{output_format}")
-        processor.convert(input_path, str(output_path))
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{output_format}") as temp_output:
+            output_path = temp_output.name
 
-        with open(output_path, "rb") as f:
-            content = f.read()
+        processor.convert(input_path, output_path)
 
-        Path(input_path).unlink()
-        Path(output_path).unlink()
-
-        return JSONResponse(content={"converted_content": content.decode()})
+        output_name = f"{Path(file.filename).stem}.{output_format}"
+        return FileResponse(
+            output_path,
+            filename=output_name,
+            media_type="application/octet-stream",
+            background=BackgroundTask(_cleanup_files, input_path, output_path)
+        )
 
     except Exception as e:
+        if input_path:
+            _cleanup_files(input_path)
+        if output_path:
+            _cleanup_files(output_path)
         logger.error(f"Conversion error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 

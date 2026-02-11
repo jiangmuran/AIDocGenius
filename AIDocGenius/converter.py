@@ -1,6 +1,11 @@
 from pathlib import Path
 from typing import Optional, Dict, Any
-import markdown
+try:
+    import markdown
+    MARKDOWN_AVAILABLE = True
+except ImportError:
+    markdown = None
+    MARKDOWN_AVAILABLE = False
 from docx import Document
 from .utils import load_document, save_document, logger
 
@@ -110,7 +115,9 @@ class Converter:
         if isinstance(content, str):
             # 如果输入是Markdown格式，转换为HTML
             if options.get('from_markdown', True):
-                return markdown.markdown(content)
+                if MARKDOWN_AVAILABLE:
+                    return markdown.markdown(content)
+                return self._basic_markdown_to_html(content)
             else:
                 return f"<html><body><pre>{content}</pre></body></html>"
         elif isinstance(content, dict):
@@ -122,6 +129,21 @@ class Converter:
             return html
         else:
             return f"<html><body><pre>{str(content)}</pre></body></html>"
+
+    def _basic_markdown_to_html(self, content: str) -> str:
+        """基础 Markdown 转 HTML（无依赖回退）"""
+        lines = content.splitlines()
+        html_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("# "):
+                html_lines.append(f"<h1>{stripped[2:].strip()}</h1>")
+            elif stripped.startswith("## "):
+                html_lines.append(f"<h2>{stripped[3:].strip()}</h2>")
+            elif stripped:
+                html_lines.append(f"<p>{stripped}</p>")
+        body = "\n".join(html_lines)
+        return f"<html><body>{body}</body></html>"
             
     def _convert_to_json(self, content: Any, options: dict) -> dict:
         """

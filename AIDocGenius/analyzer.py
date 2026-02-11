@@ -1,6 +1,11 @@
 from typing import Optional, List, Dict
 import re
-import nltk
+try:
+    import nltk
+    NLTK_AVAILABLE = True
+except ImportError:
+    nltk = None
+    NLTK_AVAILABLE = False
 from collections import Counter
 from .utils import logger
 
@@ -14,30 +19,31 @@ class Analyzer:
         初始化分析器
         """
         # 下载所需的 NLTK 资源
-        try:
-            nltk.data.find('tokenizers/punkt_tab')
-        except LookupError:
+        if NLTK_AVAILABLE:
             try:
-                nltk.download('punkt_tab', quiet=True)
-            except Exception:
-                # 如果 punkt_tab 不可用，尝试 punkt
+                nltk.data.find('tokenizers/punkt_tab')
+            except LookupError:
                 try:
-                    nltk.data.find('tokenizers/punkt')
-                except LookupError:
-                    nltk.download('punkt', quiet=True)
-            
-        try:
-            nltk.data.find('taggers/averaged_perceptron_tagger_eng')
-        except LookupError:
+                    nltk.download('punkt_tab', quiet=True)
+                except Exception:
+                    # 如果 punkt_tab 不可用，尝试 punkt
+                    try:
+                        nltk.data.find('tokenizers/punkt')
+                    except LookupError:
+                        nltk.download('punkt', quiet=True)
+
             try:
-                nltk.download('averaged_perceptron_tagger_eng', quiet=True)
-            except Exception:
-                # 回退到旧版本资源名
+                nltk.data.find('taggers/averaged_perceptron_tagger_eng')
+            except LookupError:
                 try:
-                    nltk.data.find('taggers/averaged_perceptron_tagger')
-                except LookupError:
-                    nltk.download('averaged_perceptron_tagger', quiet=True)
-            
+                    nltk.download('averaged_perceptron_tagger_eng', quiet=True)
+                except Exception:
+                    # 回退到旧版本资源名
+                    try:
+                        nltk.data.find('taggers/averaged_perceptron_tagger')
+                    except LookupError:
+                        nltk.download('averaged_perceptron_tagger', quiet=True)
+
         logger.info("Initialized analyzer")
         
     def analyze(self, content: str, criteria: Optional[List[str]] = None) -> Dict:
@@ -78,8 +84,8 @@ class Analyzer:
         """
         分析文档可读性
         """
-        sentences = nltk.sent_tokenize(content)
-        words = nltk.word_tokenize(content)
+        sentences = self._sentence_tokenize(content)
+        words = self._word_tokenize(content)
         
         # 计算平均句子长度
         avg_sentence_length = len(words) / len(sentences) if sentences else 0
@@ -102,7 +108,7 @@ class Analyzer:
         分析文档结构
         """
         paragraphs = content.split('\n\n')
-        sentences = nltk.sent_tokenize(content)
+        sentences = self._sentence_tokenize(content)
         
         # 分析段落结构
         paragraph_lengths = [len(p.split()) for p in paragraphs if p.strip()]
@@ -123,17 +129,16 @@ class Analyzer:
         """
         提取关键词
         """
-        # 分词和词性标注
-        tokens = nltk.word_tokenize(content.lower())
-        tagged = nltk.pos_tag(tokens)
-        
-        # 只保留名词和形容词
-        keywords = [word for word, pos in tagged if pos.startswith(('NN', 'JJ'))]
-        
-        # 计算词频
+        tokens = self._word_tokenize(content.lower())
+
+        if NLTK_AVAILABLE:
+            tagged = nltk.pos_tag(tokens)
+            keywords = [word for word, pos in tagged if pos.startswith(('NN', 'JJ'))]
+        else:
+            keywords = [word for word in tokens if len(word) > 1]
+
         keyword_freq = Counter(keywords)
-        
-        # 返回前N个关键词及其频率
+
         return [
             {'word': word, 'frequency': freq}
             for word, freq in keyword_freq.most_common(top_n)
@@ -145,8 +150,8 @@ class Analyzer:
         """
         # 基本统计
         char_count = len(content)
-        word_count = len(nltk.word_tokenize(content))
-        sentence_count = len(nltk.sent_tokenize(content))
+        word_count = len(self._word_tokenize(content))
+        sentence_count = len(self._sentence_tokenize(content))
         paragraph_count = len([p for p in content.split('\n\n') if p.strip()])
         
         # 特殊字符统计
@@ -162,6 +167,17 @@ class Analyzer:
             'special_chars_count': special_chars,
             'avg_word_per_sentence': round(word_count / sentence_count if sentence_count else 0, 2)
         }
+
+    def _sentence_tokenize(self, content: str) -> List[str]:
+        if NLTK_AVAILABLE:
+            return nltk.sent_tokenize(content)
+        sentences = re.split(r'[。！？.!?]+', content)
+        return [s.strip() for s in sentences if s.strip()]
+
+    def _word_tokenize(self, content: str) -> List[str]:
+        if NLTK_AVAILABLE:
+            return nltk.word_tokenize(content)
+        return re.findall(r'[\u4e00-\u9fff]+|[A-Za-z0-9]+', content)
         
     def _get_readability_suggestion(self, score: float) -> str:
         """

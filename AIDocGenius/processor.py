@@ -17,7 +17,7 @@ from .converter import Converter
 from .analyzer import Analyzer
 from .comparator import DocumentComparator
 from .merger import DocumentMerger
-from .utils import load_document, save_document
+from .utils import load_document, save_document, ensure_text, get_file_info
 
 class DocProcessor:
     """文档处理器基类，提供基础的文档处理功能"""
@@ -26,9 +26,9 @@ class DocProcessor:
         self.config = config or {}
         self._supported_formats = {
             'pdf': ['.pdf'],
-            'word': ['.doc', '.docx'],
+            'word': ['.docx'],
             'text': ['.txt', '.md', '.rst'],
-            'image': ['.png', '.jpg', '.jpeg', '.tiff', '.bmp']
+            'structured': ['.json', '.yaml', '.yml']
         }
         # 默认使用 Google Translate（更轻量级）
         self.translator = Translator(use_google=True)
@@ -43,8 +43,18 @@ class DocProcessor:
     def summarizer(self):
         """延迟加载 summarizer"""
         if self._summarizer is None:
+            summarizer_config = self.config.get("summarizer", {})
+            if not isinstance(summarizer_config, dict):
+                summarizer_config = {}
             # 默认使用简单摘要算法（无需下载模型）
-            self._summarizer = Summarizer(use_simple=True)
+            self._summarizer = Summarizer(
+                use_simple=summarizer_config.get("use_simple", True),
+                use_small_model=summarizer_config.get("use_small_model", False),
+                model_name=summarizer_config.get("model_name"),
+                max_length=summarizer_config.get("max_length", 1024),
+                min_length=summarizer_config.get("min_length", 50),
+                max_input_length=summarizer_config.get("max_input_length")
+            )
         return self._summarizer
 
     def process_document(
@@ -99,6 +109,38 @@ class DocProcessor:
         if hasattr(self, method_name):
             return getattr(self, method_name)(file_path, **kwargs)
         raise NotImplementedError(f"未实现的文件格式处理方法: {file_format}")
+
+    def _process_text(self, file_path: Path, **kwargs) -> Dict[str, Any]:
+        content = load_document(file_path)
+        return {
+            "format": "text",
+            "content": content,
+            "info": get_file_info(file_path)
+        }
+
+    def _process_pdf(self, file_path: Path, **kwargs) -> Dict[str, Any]:
+        content = load_document(file_path)
+        return {
+            "format": "pdf",
+            "content": content,
+            "info": get_file_info(file_path)
+        }
+
+    def _process_word(self, file_path: Path, **kwargs) -> Dict[str, Any]:
+        content = load_document(file_path)
+        return {
+            "format": "word",
+            "content": content,
+            "info": get_file_info(file_path)
+        }
+
+    def _process_structured(self, file_path: Path, **kwargs) -> Dict[str, Any]:
+        content = load_document(file_path)
+        return {
+            "format": "structured",
+            "content": content,
+            "info": get_file_info(file_path)
+        }
     
     def _save_result(self, result: Dict[str, Any], output_path: Union[str, Path]):
         """保存处理结果"""
@@ -141,7 +183,11 @@ class DocProcessor:
             str: 生成的摘要文本
         """
         content = load_document(document_path)
-        return self.summarizer.generate_summary(content, max_length=max_length, min_length=min_length)
+        return self.summarizer.generate_summary(
+            ensure_text(content),
+            max_length=max_length,
+            min_length=min_length
+        )
 
     def translate(self,
                  document_path: Union[str, Path],
@@ -169,11 +215,16 @@ class DocProcessor:
         }
         
         target_lang = lang_map.get(target_language.lower(), target_language.lower())
-        source_lang = lang_map.get(source_language.lower(), source_language.lower()) if source_language else "en"
+        if source_language is None:
+            source_lang = "auto"
+        elif source_language.lower() == "auto":
+            source_lang = "auto"
+        else:
+            source_lang = lang_map.get(source_language.lower(), source_language.lower())
         
         # 直接调用 translator，它会自动处理语言对和回退（包括 Google Translate）
         try:
-            return self.translator.translate(content, source_lang, target_lang)
+            return self.translator.translate(ensure_text(content), source_lang, target_lang)
         except Exception as e:
             raise DocumentProcessError(f"翻译失败: {str(e)}")
 
@@ -205,7 +256,7 @@ class DocProcessor:
             dict: 分析结果报告
         """
         content = load_document(document_path)
-        return self.analyzer.analyze(content, criteria)
+        return self.analyzer.analyze(ensure_text(content), criteria)
 
     def batch_process(self,
                      input_dir: Union[str, Path],
@@ -228,20 +279,55 @@ class DocProcessor:
         input_path = Path(input_dir)
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
+
+        output_path_resolved = output_path.resolve()
         
         for file in input_path.glob("**/*"):
-            if file.is_file():
-                results[str(file)] = {}
-                for operation in operations:
-                    try:
-                        if operation == "summarize":
-                            results[str(file)]["summary"] = self.generate_summary(file, **kwargs)
-                        elif operation == "translate":
-                            results[str(file)]["translation"] = self.translate(file, **kwargs)
-                        elif operation == "analyze":
-                            results[str(file)]["analysis"] = self.analyze(file, **kwargs)
-                    except Exception as e:
-                        results[str(file)][operation] = f"Error: {str(e)}"
+            if not file.is_file():
+                continue
+            try:
+                if output_path_resolved in file.resolve().parents:
+                    continue
+            except Exception:
+                pass
+
+            results[str(file)] = {}
+            for operation in operations:
+                try:
+                    rel_path = file.relative_to(input_path)
+                    target_dir = output_path / rel_path.parent
+                    target_dir.mkdir(parents=True, exist_ok=True)
+
+                    if operation == "summarize":
+                        summary = self.generate_summary(file, **kwargs)
+                        results[str(file)]["summary"] = summary
+                        output_file = target_dir / f"{file.stem}.summary.txt"
+                        save_document(summary, output_file)
+                        results[str(file)]["summary_output"] = str(output_file)
+                    elif operation == "translate":
+                        translation = self.translate(file, **kwargs)
+                        results[str(file)]["translation"] = translation
+                        target_language = kwargs.get("target_language", "en")
+                        output_file = target_dir / f"{file.stem}.translated.{target_language}.txt"
+                        save_document(translation, output_file)
+                        results[str(file)]["translation_output"] = str(output_file)
+                    elif operation == "analyze":
+                        analysis = self.analyze(file, **kwargs)
+                        results[str(file)]["analysis"] = analysis
+                        output_file = target_dir / f"{file.stem}.analysis.json"
+                        save_document(analysis, output_file)
+                        results[str(file)]["analysis_output"] = str(output_file)
+                    elif operation == "convert":
+                        output_format = kwargs.get("output_format")
+                        if not output_format:
+                            raise DocumentProcessError("convert 操作需要提供 output_format")
+                        output_file = target_dir / f"{file.stem}.{output_format.lstrip('.')}"
+                        self.convert(file, output_file)
+                        results[str(file)]["converted_output"] = str(output_file)
+                    else:
+                        results[str(file)][operation] = "Error: Unsupported operation"
+                except Exception as e:
+                    results[str(file)][operation] = f"Error: {str(e)}"
                         
         return results
     
@@ -260,8 +346,8 @@ class DocProcessor:
         Returns:
             dict: 比较结果（相似度、差异等）
         """
-        content1 = load_document(document1_path)
-        content2 = load_document(document2_path)
+        content1 = ensure_text(load_document(document1_path))
+        content2 = ensure_text(load_document(document2_path))
         
         return self.comparator.compare(content1, content2)
     
@@ -283,7 +369,7 @@ class DocProcessor:
             # 智能合并
             documents = []
             for path in document_paths:
-                content = load_document(path)
+                content = ensure_text(load_document(path))
                 documents.append(content)
             
             merged_content = self.merger.smart_merge(documents)

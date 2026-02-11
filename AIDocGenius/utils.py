@@ -2,10 +2,19 @@ import os
 from pathlib import Path
 from typing import Union, Any
 import json
-import yaml
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    yaml = None
+    YAML_AVAILABLE = False
 from docx import Document
-import PyPDF2
-import markdown
+try:
+    import PyPDF2
+    PDF_AVAILABLE = True
+except ImportError:
+    PyPDF2 = None
+    PDF_AVAILABLE = False
 import logging
 
 # 配置日志
@@ -15,7 +24,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def load_document(file_path: Union[str, Path]) -> str:
+def load_document(file_path: Union[str, Path]) -> Any:
     """
     加载文档内容，支持多种格式
     
@@ -42,15 +51,19 @@ def load_document(file_path: Union[str, Path]) -> str:
             return '\n'.join([paragraph.text for paragraph in doc.paragraphs])
             
         elif suffix == '.pdf':
+            if not PDF_AVAILABLE:
+                raise ImportError("PyPDF2 is required to read PDF files")
             with open(file_path, 'rb') as f:
                 pdf_reader = PyPDF2.PdfReader(f)
-                return '\n'.join([page.extract_text() for page in pdf_reader.pages])
+                return '\n'.join([page.extract_text() or "" for page in pdf_reader.pages])
                 
         elif suffix in ['.json', '.yaml', '.yml']:
             with open(file_path, 'r', encoding='utf-8') as f:
                 if suffix == '.json':
                     return json.load(f)
                 else:
+                    if not YAML_AVAILABLE:
+                        raise ImportError("pyyaml is required to read YAML files")
                     return yaml.safe_load(f)
         else:
             raise ValueError(f"Unsupported file format: {suffix}")
@@ -108,6 +121,8 @@ def save_document(content: Any, file_path: Union[str, Path], format_options: dic
                 if suffix == '.json':
                     json.dump(content, f, ensure_ascii=False, indent=2)
                 else:
+                    if not YAML_AVAILABLE:
+                        raise ImportError("pyyaml is required to write YAML files")
                     yaml.safe_dump(content, f, allow_unicode=True)
         else:
             raise ValueError(f"Unsupported file format: {suffix}")
@@ -161,4 +176,14 @@ def create_directory_if_not_exists(directory: Union[str, Path]) -> None:
     Args:
         directory: 目录路径
     """
-    Path(directory).mkdir(parents=True, exist_ok=True) 
+    Path(directory).mkdir(parents=True, exist_ok=True)
+
+def ensure_text(content: Any) -> str:
+    """
+    将内容标准化为字符串，供摘要/分析/翻译使用
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, (dict, list)):
+        return json.dumps(content, ensure_ascii=False, indent=2)
+    return str(content)

@@ -85,6 +85,9 @@ class Translator:
                 # 如果 Google Translate 失败，回退到 transformers
                 if not TRANSFORMERS_AVAILABLE:
                     raise TranslationError(f"翻译失败: {str(e)}")
+
+        if source_lang == "auto":
+            raise TranslationError("当前翻译引擎不支持自动检测语言，请显式指定 source_language")
         
         # 使用 transformers 模型
         if not TRANSFORMERS_AVAILABLE:
