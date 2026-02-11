@@ -7,6 +7,7 @@ from typing import Optional, List
 
 from . import __version__
 from .processor import DocProcessor
+from .summarizer import Summarizer
 from .exceptions import AIDocGeniusError
 from .utils import load_config, save_document
 
@@ -96,7 +97,13 @@ def create_parser() -> argparse.ArgumentParser:
     batch_parser.add_argument("--source-language", help="源语言")
     batch_parser.add_argument("--output-format", help="转换输出格式")
     batch_parser.add_argument("--report", action="store_true", help="生成批处理报告")
-    batch_parser.add_argument("--report-formats", help="报告格式，逗号分隔（json,md）")
+    batch_parser.add_argument("--report-formats", help="报告格式，逗号分隔（json,md,csv）")
+
+    # 模型预热命令
+    warmup_parser = subparsers.add_parser("model", help="模型管理", parents=[common_parser])
+    warmup_parser.add_argument("action", choices=["warmup"], help="操作类型")
+    warmup_parser.add_argument("--model-name", help="模型名称", default="google/flan-t5-small")
+    warmup_parser.add_argument("--cache-dir", help="模型缓存目录")
 
     return parser
 
@@ -186,6 +193,19 @@ def batch_command(args: argparse.Namespace) -> Optional[str]:
     return str(result)
 
 
+def model_command(args: argparse.Namespace) -> Optional[str]:
+    if args.action == "warmup":
+        summarizer = Summarizer(
+            use_simple=False,
+            use_small_model=True,
+            model_name=args.model_name,
+            cache_dir=args.cache_dir
+        )
+        summarizer.warmup()
+        return f"Model warmed up: {args.model_name}"
+    return None
+
+
 def main():
     """主函数"""
     parser = create_parser()
@@ -203,7 +223,8 @@ def main():
         "convert": convert_command,
         "compare": compare_command,
         "merge": merge_command,
-        "batch": batch_command
+        "batch": batch_command,
+        "model": model_command
     }
 
     try:

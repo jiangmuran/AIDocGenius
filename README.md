@@ -161,6 +161,9 @@ python -m AIDocGenius.cli analyze "document.txt" --output analysis.json
 
 # Convert
 python -m AIDocGenius.cli convert "README.md" "README.html"
+
+# Warm up small model
+python -m AIDocGenius.cli model warmup --model-name "google/flan-t5-small"
 ```
 
 #### Method 5: REST API
@@ -174,6 +177,19 @@ POST /compare
 POST /merge
 POST /batch
 GET  /health
+```
+
+### API Response Schema
+
+All JSON endpoints return:
+
+```json
+{
+  "status": "ok",
+  "data": {},
+  "error": null,
+  "request_id": "uuid"
+}
 ```
 
 ## Test Results
@@ -266,7 +282,7 @@ Batch processing writes outputs into `output_dir` with standardized filenames:
 - `*.translated.<lang>.txt`
 - `*.analysis.json`
 - `*.<output_format>` (for convert)
-- `batch_report.json`, `batch_report.md`
+- `batch_report.json`, `batch_report.md`, `batch_report.csv`
 
 ### 6. Compare Documents
 
@@ -474,6 +490,10 @@ analysis:
   enable_keywords: true
   keyword_count: 10
 ```
+
+Environment variables:
+
+- `MODEL_CACHE_DIR`: HuggingFace model cache directory
 
 ## Links
 

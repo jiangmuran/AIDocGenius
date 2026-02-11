@@ -53,7 +53,8 @@ class DocProcessor:
                 model_name=summarizer_config.get("model_name"),
                 max_length=summarizer_config.get("max_length", 1024),
                 min_length=summarizer_config.get("min_length", 50),
-                max_input_length=summarizer_config.get("max_input_length")
+                max_input_length=summarizer_config.get("max_input_length"),
+                cache_dir=summarizer_config.get("cache_dir")
             )
         return self._summarizer
 
@@ -341,6 +342,7 @@ class DocProcessor:
 
             processed_files += 1
                         
+        report_payload = None
         if report:
             if report_formats is None:
                 report_formats = ["json"]
@@ -354,6 +356,8 @@ class DocProcessor:
                 "error_count": error_count,
                 "results": results
             }
+
+            report_payload = summary_report
 
             if "json" in report_formats:
                 report_path = output_path / "batch_report.json"
@@ -381,6 +385,27 @@ class DocProcessor:
                             report_lines.append(f"  - {key}: {value}")
                 report_path = output_path / "batch_report.md"
                 save_document("\n".join(report_lines), report_path)
+
+            if "csv" in report_formats:
+                import csv
+
+                report_path = output_path / "batch_report.csv"
+                with open(report_path, "w", newline="", encoding="utf-8") as csv_file:
+                    writer = csv.writer(csv_file)
+                    writer.writerow(["file", "operation", "status", "output", "error"])
+                    for file_path, result in results.items():
+                        for key, value in result.items():
+                            if key.endswith("_output"):
+                                operation = key.replace("_output", "")
+                                writer.writerow([file_path, operation, "ok", value, ""])
+                            elif isinstance(value, str) and value.startswith("Error:"):
+                                writer.writerow([file_path, key, "error", "", value])
+
+        if report_payload is not None:
+            return {
+                "results": results,
+                "report": report_payload
+            }
 
         return results
     

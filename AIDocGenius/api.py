@@ -1,14 +1,15 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import tempfile
 import uvicorn
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from starlette.background import BackgroundTask
 import shutil
 import zipfile
+import uuid
 
 from .processor import DocProcessor
 from .utils import logger
@@ -33,6 +34,39 @@ static_path = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 processor = DocProcessor()
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request.state.request_id = str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request.state.request_id
+    return response
+
+def _success(data: Any, request_id: str, status_code: int = 200) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "ok",
+            "data": data,
+            "error": None,
+            "request_id": request_id
+        }
+    )
+
+def _error(code: str, message: str, request_id: str, status_code: int = 500, details: Optional[Dict[str, Any]] = None) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "error",
+            "data": None,
+            "error": {
+                "code": code,
+                "message": message,
+                "details": details or {}
+            },
+            "request_id": request_id
+        }
+    )
 
 def _cleanup_files(*paths: str) -> None:
     for path in paths:
@@ -64,11 +98,11 @@ async def _save_upload_files(files: List[UploadFile], target_dir: Path) -> List[
     return saved_paths
 
 @app.get("/health")
-async def health_check():
+async def health_check(request: Request):
     """
     健康检查端点
     """
-    return {"status": "healthy", "version": "0.1.0"}
+    return _success({"status": "healthy", "version": "0.1.0"}, request.state.request_id)
 
 @app.get("/")
 async def read_root():
@@ -79,6 +113,7 @@ async def read_root():
 
 @app.post("/summarize")
 async def summarize_document(
+    request: Request,
     file: UploadFile = File(...),
     max_length: Optional[int] = Query(default=None),
     min_length: Optional[int] = Query(default=None)
@@ -99,14 +134,18 @@ async def summarize_document(
         )
 
         Path(temp_path).unlink()
-        return JSONResponse(content={"summary": summary})
+        return _success({"summary": summary}, request.state.request_id)
 
+    except ImportError as e:
+        logger.error(f"Summarization error: {str(e)}")
+        return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
     except Exception as e:
         logger.error(f"Summarization error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error("PROCESS_FAILED", str(e), request.state.request_id, status_code=500)
 
 @app.post("/translate")
 async def translate_document(
+    request: Request,
     target_language: str,
     file: UploadFile = File(...),
     source_language: Optional[str] = Query(default=None)
@@ -127,14 +166,17 @@ async def translate_document(
         )
 
         Path(temp_path).unlink()
-        return JSONResponse(content={"translation": translation})
+        return _success({"translation": translation}, request.state.request_id)
 
+    except ImportError as e:
+        logger.error(f"Translation error: {str(e)}")
+        return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
     except Exception as e:
         logger.error(f"Translation error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error("PROCESS_FAILED", str(e), request.state.request_id, status_code=500)
 
 @app.post("/analyze")
-async def analyze_document(file: UploadFile = File(...)):
+async def analyze_document(request: Request, file: UploadFile = File(...)):
     """
     分析文档
     """
@@ -146,14 +188,18 @@ async def analyze_document(file: UploadFile = File(...)):
 
         analysis = processor.analyze(temp_path)
         Path(temp_path).unlink()
-        return JSONResponse(content=analysis)
+        return _success(analysis, request.state.request_id)
 
+    except ImportError as e:
+        logger.error(f"Analysis error: {str(e)}")
+        return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
     except Exception as e:
         logger.error(f"Analysis error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error("PROCESS_FAILED", str(e), request.state.request_id, status_code=500)
 
 @app.post("/compare")
 async def compare_documents(
+    request: Request,
     file1: UploadFile = File(...),
     file2: UploadFile = File(...)
 ):
@@ -171,14 +217,18 @@ async def compare_documents(
 
         result = processor.compare_documents(path1, path2)
         _cleanup_files(path1, path2)
-        return JSONResponse(content=result)
+        return _success(result, request.state.request_id)
 
+    except ImportError as e:
+        logger.error(f"Comparison error: {str(e)}")
+        return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
     except Exception as e:
         logger.error(f"Comparison error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error("PROCESS_FAILED", str(e), request.state.request_id, status_code=500)
 
 @app.post("/merge")
 async def merge_documents(
+    request: Request,
     files: List[UploadFile] = File(...),
     output_format: str = Query(default="txt"),
     smart_merge: bool = Query(default=False)
@@ -206,16 +256,24 @@ async def merge_documents(
             background=BackgroundTask(_cleanup_dirs, input_dir)
         )
 
+    except ImportError as e:
+        if input_dir:
+            _cleanup_dirs(input_dir)
+        if output_path:
+            _cleanup_files(output_path)
+        logger.error(f"Merge error: {str(e)}")
+        return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
     except Exception as e:
         if input_dir:
             _cleanup_dirs(input_dir)
         if output_path:
             _cleanup_files(output_path)
         logger.error(f"Merge error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error("PROCESS_FAILED", str(e), request.state.request_id, status_code=500)
 
 @app.post("/batch")
 async def batch_process(
+    request: Request,
     files: List[UploadFile] = File(...),
     operations: str = Query(..., description="Comma-separated operations"),
     output_format: Optional[str] = Query(default=None),
@@ -253,7 +311,7 @@ async def batch_process(
         )
 
         if not zip_output:
-            return JSONResponse(content=results)
+            return _success(results, request.state.request_id)
 
         zip_path = Path(output_dir) / "batch_results.zip"
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -268,6 +326,15 @@ async def batch_process(
             background=BackgroundTask(_cleanup_dirs, input_dir, output_dir)
         )
 
+    except ImportError as e:
+        if input_dir:
+            _cleanup_dirs(input_dir)
+        if output_dir:
+            _cleanup_dirs(output_dir)
+        if zip_path:
+            _cleanup_files(str(zip_path))
+        logger.error(f"Batch error: {str(e)}")
+        return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
     except Exception as e:
         if input_dir:
             _cleanup_dirs(input_dir)
@@ -276,10 +343,11 @@ async def batch_process(
         if zip_path:
             _cleanup_files(str(zip_path))
         logger.error(f"Batch error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error("PROCESS_FAILED", str(e), request.state.request_id, status_code=500)
 
 @app.post("/convert")
 async def convert_document(
+    request: Request,
     output_format: str,
     file: UploadFile = File(...)
 ):
@@ -307,31 +375,34 @@ async def convert_document(
             background=BackgroundTask(_cleanup_files, input_path, output_path)
         )
 
+    except ImportError as e:
+        if input_path:
+            _cleanup_files(input_path)
+        if output_path:
+            _cleanup_files(output_path)
+        logger.error(f"Conversion error: {str(e)}")
+        return _error("DEPENDENCY_MISSING", str(e), request.state.request_id, status_code=500)
     except Exception as e:
         if input_path:
             _cleanup_files(input_path)
         if output_path:
             _cleanup_files(output_path)
         logger.error(f"Conversion error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error("PROCESS_FAILED", str(e), request.state.request_id, status_code=500)
 
 @app.get("/supported-formats")
-async def get_supported_formats():
+async def get_supported_formats(request: Request):
     """
     获取支持的文件格式
     """
-    return {
-        "formats": processor.converter.get_supported_formats()
-    }
+    return _success({"formats": processor.converter.get_supported_formats()}, request.state.request_id)
 
 @app.get("/supported-languages")
-async def get_supported_languages():
+async def get_supported_languages(request: Request):
     """
     获取支持的语言
     """
-    return {
-        "languages": processor.translator.get_supported_languages()
-    }
+    return _success({"languages": processor.translator.get_supported_languages()}, request.state.request_id)
 
 def start_server(host: str = "0.0.0.0", port: int = 8000):
     """

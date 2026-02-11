@@ -124,11 +124,14 @@ class TestDocProcessor(unittest.TestCase):
             max_length=50,
             output_format="md",
             report=True,
-            report_formats=["json", "md"]
+            report_formats=["json", "md", "csv"]
         )
 
         self.assertIsInstance(results, dict)
-        file_results = results.get(str(self.test_file), {})
+        if "results" in results:
+            file_results = results.get("results", {}).get(str(self.test_file), {})
+        else:
+            file_results = results.get(str(self.test_file), {})
         summary_out = Path(file_results.get("summary_output", ""))
         analysis_out = Path(file_results.get("analysis_output", ""))
         convert_out = Path(file_results.get("converted_output", ""))
@@ -137,6 +140,7 @@ class TestDocProcessor(unittest.TestCase):
         self.assertTrue(convert_out.exists())
         self.assertTrue((output_dir / "batch_report.json").exists())
         self.assertTrue((output_dir / "batch_report.md").exists())
+        self.assertTrue((output_dir / "batch_report.csv").exists())
     
     def test_custom_config(self):
         """测试自定义配置"""

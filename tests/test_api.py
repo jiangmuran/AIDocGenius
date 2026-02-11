@@ -23,19 +23,25 @@ class TestAPI(unittest.TestCase):
     def test_health(self):
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json().get("status"), "healthy")
+        body = response.json()
+        self.assertEqual(body.get("status"), "ok")
+        self.assertEqual(body.get("data", {}).get("status"), "healthy")
 
     def test_summarize(self):
         files = {"file": ("doc.txt", "这是一个测试文档。它包含两句话。", "text/plain")}
         response = self.client.post("/summarize?max_length=50", files=files)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("summary", response.json())
+        body = response.json()
+        self.assertEqual(body.get("status"), "ok")
+        self.assertIn("summary", body.get("data", {}))
 
     def test_analyze(self):
         files = {"file": ("doc.txt", "这是一个测试文档。", "text/plain")}
         response = self.client.post("/analyze", files=files)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("statistics", response.json())
+        body = response.json()
+        self.assertEqual(body.get("status"), "ok")
+        self.assertIn("statistics", body.get("data", {}))
 
     def test_compare(self):
         files = {
@@ -44,7 +50,9 @@ class TestAPI(unittest.TestCase):
         }
         response = self.client.post("/compare", files=files)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("similarity", response.json())
+        body = response.json()
+        self.assertEqual(body.get("status"), "ok")
+        self.assertIn("similarity", body.get("data", {}))
 
     def test_merge(self):
         files = [
@@ -65,7 +73,9 @@ class TestAPI(unittest.TestCase):
             files=files
         )
         self.assertEqual(response.status_code, 200)
-        self.assertIsInstance(response.json(), dict)
+        body = response.json()
+        self.assertEqual(body.get("status"), "ok")
+        self.assertIsInstance(body.get("data"), dict)
 
 
 if __name__ == '__main__':

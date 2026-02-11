@@ -51,6 +51,15 @@ class TestSummarizer(unittest.TestCase):
         summary = self.summarizer.generate_summary(short_text, max_length=100)
         self.assertEqual(summary.strip(), short_text.strip())
 
+    def test_cache_dir_env(self):
+        """测试缓存目录环境变量读取"""
+        import os
+
+        os.environ["MODEL_CACHE_DIR"] = "/tmp/aidocgenius_cache"
+        summarizer = Summarizer(use_simple=True)
+        self.assertEqual(summarizer.cache_dir, "/tmp/aidocgenius_cache")
+        os.environ.pop("MODEL_CACHE_DIR", None)
+
 
 class TestSummarizerEdgeCases(unittest.TestCase):
     """测试边界情况"""

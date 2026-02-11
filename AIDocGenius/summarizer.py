@@ -1,6 +1,7 @@
 """
 摘要生成器模块
 """
+import os
 from typing import List, Optional, Union
 from pathlib import Path
 
@@ -25,7 +26,8 @@ class Summarizer:
         min_length: int = 50,
         use_simple: bool = True,
         use_small_model: bool = False,
-        max_input_length: Optional[int] = None
+        max_input_length: Optional[int] = None,
+        cache_dir: Optional[str] = None
     ):
         """
         初始化摘要生成器
@@ -47,6 +49,7 @@ class Summarizer:
         self.max_length = max_length
         self.min_length = min_length
         self.model_name = model_name or "IDEA-CCNL/Randeng-Pegasus-238M-Summary-Chinese"
+        self.cache_dir = cache_dir or os.getenv("MODEL_CACHE_DIR")
         if max_input_length is None:
             if "t5" in self.model_name.lower():
                 max_input_length = 512
@@ -56,12 +59,24 @@ class Summarizer:
         
         if not self.use_simple and TRANSFORMERS_AVAILABLE:
             try:
-                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-                self.model = AutoModelForSeq2SeqGeneration.from_pretrained(self.model_name).to(self.device)
+                self._load_model()
             except Exception as e:
                 # 如果加载模型失败，回退到简单摘要
                 self.use_simple = True
                 print(f"警告: 加载摘要模型失败，将使用简单摘要算法: {str(e)}")
+
+    def _load_model(self) -> None:
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, cache_dir=self.cache_dir)
+        self.model = AutoModelForSeq2SeqGeneration.from_pretrained(self.model_name, cache_dir=self.cache_dir).to(self.device)
+
+    def warmup(self) -> None:
+        """预热模型并验证可用性"""
+        if self.use_simple:
+            return
+        if not TRANSFORMERS_AVAILABLE:
+            raise SummarizationError("transformers is not available")
+        if not hasattr(self, "tokenizer") or not hasattr(self, "model"):
+            self._load_model()
     
     def generate_summary(
         self,

@@ -147,6 +147,9 @@ python examples/示例3_文档分析.py
 python -m AIDocGenius.cli summary "document.txt" --max-length 200
 python -m AIDocGenius.cli analyze "document.txt" --output analysis.json
 python -m AIDocGenius.cli convert "README.md" "README.html"
+
+# 预热小模型
+python -m AIDocGenius.cli model warmup --model-name "google/flan-t5-small"
 ```
 
 #### 方式五：REST API
@@ -160,6 +163,19 @@ POST /compare
 POST /merge
 POST /batch
 GET  /health
+```
+
+### API 返回结构
+
+所有 JSON 端点返回：
+
+```json
+{
+  "status": "ok",
+  "data": {},
+  "error": null,
+  "request_id": "uuid"
+}
 ```
 
 ## 测试
@@ -244,7 +260,7 @@ results = processor.batch_process(
 - `*.translated.<lang>.txt`
 - `*.analysis.json`
 - `*.<output_format>`（convert）
-- `batch_report.json`、`batch_report.md`
+- `batch_report.json`、`batch_report.md`、`batch_report.csv`
 
 ### 6. 文档对比
 
@@ -450,6 +466,10 @@ analysis:
   enable_keywords: true
   keyword_count: 10
 ```
+
+环境变量：
+
+- `MODEL_CACHE_DIR`: HuggingFace 模型缓存目录
 
 ## 相关链接
 

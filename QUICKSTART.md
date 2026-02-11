@@ -112,6 +112,9 @@ python -m AIDocGenius.cli analyze "your_document.txt" --output analysis.json
 
 # 格式转换
 python -m AIDocGenius.cli convert "README.md" "README.html"
+
+# 预热小模型
+python -m AIDocGenius.cli model warmup --model-name "google/flan-t5-small"
 ```
 
 ### 方式五：REST API
@@ -126,6 +129,8 @@ POST /merge
 POST /batch
 GET  /health
 ```
+
+JSON 端点统一返回 `status/data/error/request_id` 结构。
 
 `/batch` 支持 `zip_output=true` 下载压缩包，`report=true` 生成报告文件。
 
