@@ -136,7 +136,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             resultCard.style.display = 'block';
-            resultContent.innerHTML = `<div class="alert alert-danger">错误: ${error.message}</div>`;
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger';
+            alertDiv.textContent = `错误: ${error.message}`;
+            resultContent.innerHTML = '';
+            resultContent.appendChild(alertDiv);
         } finally {
             processButton.disabled = false;
             processButton.textContent = '处理文档';
@@ -145,45 +149,91 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function displayResult(data, operation) {
         resultCard.style.display = 'block';
-        let html = '';
+        resultContent.innerHTML = '';
+
         const payload = data && data.data ? data.data : data;
         const requestId = data && data.request_id ? data.request_id : null;
 
+        const alertDiv = document.createElement('div');
+        const strong = document.createElement('strong');
+
         switch (operation) {
-            case 'summarize':
-                html = `<div class="alert alert-success"><strong>摘要：</strong><p>${payload.summary || ''}</p></div>`;
+            case 'summarize': {
+                alertDiv.className = 'alert alert-success';
+                strong.textContent = '摘要：';
+                const p = document.createElement('p');
+                p.textContent = payload.summary || '';
+                alertDiv.appendChild(strong);
+                alertDiv.appendChild(p);
                 break;
-            case 'translate':
-                html = `<div class="alert alert-info"><strong>翻译结果：</strong><p>${payload.translation || ''}</p></div>`;
+            }
+            case 'translate': {
+                alertDiv.className = 'alert alert-info';
+                strong.textContent = '翻译结果：';
+                const p = document.createElement('p');
+                p.textContent = payload.translation || '';
+                alertDiv.appendChild(strong);
+                alertDiv.appendChild(p);
                 break;
-            case 'analyze':
-                html = '<div class="alert alert-primary"><strong>分析结果：</strong><pre>' + 
-                       JSON.stringify(payload, null, 2) + '</pre></div>';
+            }
+            case 'analyze': {
+                alertDiv.className = 'alert alert-primary';
+                strong.textContent = '分析结果：';
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(payload, null, 2);
+                alertDiv.appendChild(strong);
+                alertDiv.appendChild(pre);
                 break;
-            case 'convert':
+            }
+            case 'convert': {
+                alertDiv.className = 'alert alert-success';
+                strong.textContent = '转换完成';
+                alertDiv.appendChild(strong);
                 if (data && data.blob) {
                     const url = URL.createObjectURL(data.blob);
-                    html = `<div class="alert alert-success"><strong>转换完成</strong><p><a href="${url}" download="${data.fileName}">下载文件</a></p></div>`;
-                } else {
-                    html = `<div class="alert alert-success"><strong>转换完成</strong></div>`;
+                    const p = document.createElement('p');
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = data.fileName;
+                    link.textContent = '下载文件';
+                    p.appendChild(link);
+                    alertDiv.appendChild(p);
                 }
                 break;
-            case 'batch':
+            }
+            case 'batch': {
                 if (data && data.blob) {
+                    alertDiv.className = 'alert alert-success';
+                    strong.textContent = '批量处理完成';
+                    alertDiv.appendChild(strong);
                     const url = URL.createObjectURL(data.blob);
-                    html = `<div class="alert alert-success"><strong>批量处理完成</strong><p><a href="${url}" download="${data.fileName}">下载结果</a></p></div>`;
+                    const p = document.createElement('p');
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = data.fileName;
+                    link.textContent = '下载结果';
+                    p.appendChild(link);
+                    alertDiv.appendChild(p);
                 } else {
-                    html = '<div class="alert alert-primary"><strong>批量报告：</strong><pre>' +
-                           JSON.stringify(payload, null, 2) + '</pre></div>';
+                    alertDiv.className = 'alert alert-primary';
+                    strong.textContent = '批量报告：';
+                    const pre = document.createElement('pre');
+                    pre.textContent = JSON.stringify(payload, null, 2);
+                    alertDiv.appendChild(strong);
+                    alertDiv.appendChild(pre);
                 }
                 break;
+            }
         }
+
+        resultContent.appendChild(alertDiv);
 
         if (requestId) {
-            html += `<div class="text-muted small mt-2">request_id: ${requestId}</div>`;
+            const meta = document.createElement('div');
+            meta.className = 'text-muted small mt-2';
+            meta.textContent = `request_id: ${requestId}`;
+            resultContent.appendChild(meta);
         }
-
-        resultContent.innerHTML = html;
     }
 
     function getBatchOperations() {
