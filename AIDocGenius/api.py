@@ -122,7 +122,7 @@ async def summarize_document(
     生成文档摘要
     """
     try:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
             content = await file.read()
             temp_file.write(content)
             temp_path = temp_file.name
@@ -154,7 +154,7 @@ async def translate_document(
     翻译文档
     """
     try:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
             content = await file.read()
             temp_file.write(content)
             temp_path = temp_file.name
@@ -181,7 +181,7 @@ async def analyze_document(request: Request, file: UploadFile = File(...)):
     分析文档
     """
     try:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
             content = await file.read()
             temp_file.write(content)
             temp_path = temp_file.name
